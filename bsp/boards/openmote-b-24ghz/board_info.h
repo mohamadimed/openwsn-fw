@@ -6,16 +6,14 @@
  * Description: CC2538-specific board information bsp module.
  */
 
-#ifndef OPENWSN_BOARD_INFO_H
-#define OPENWSN_BOARD_INFO_H
+#ifndef __BOARD_INFO_H
+#define __BOARD_INFO_H
 
 #include <stdint.h>
 #include <string.h>
 
 #include <source/cpu.h>
 #include <source/interrupt.h>
-
-#include "config.h"
 
 //=========================== defines =========================================
 
@@ -60,42 +58,6 @@
 #define PORT_PIN_RADIO_RESET_HIGH()    // nothing
 #define PORT_PIN_RADIO_RESET_LOW()     // nothing
 
-#define SLOTDURATION 20                // in miliseconds
-
-//===== IEEE802154E timing
-
-#if SLOTDURATION==10
-    // time-slot related
-    #define PORT_TsSlotDuration                 328   // counter counts one extra count, see datasheet
-    // execution speed related
-    #define PORT_maxTxDataPrepare               10    //  305us (measured  82us)
-    #define PORT_maxRxAckPrepare                10    //  305us (measured  83us)
-    #define PORT_maxRxDataPrepare                4    //  122us (measured  22us)
-    #define PORT_maxTxAckPrepare                10    //  122us (measured  94us)
-    // radio speed related
-#if OPENWSN_IEEE802154E_SECURITY_C
-    #define PORT_delayTx                        14    //  366us (measured xxxus)
-#else
-    #define PORT_delayTx                        12    //  366us (measured xxxus)
-#endif
-    #define PORT_delayRx                         0    //    0us (can not measure)
-    // radio watchdog
-#endif
-
-#if SLOTDURATION==20
-    #define PORT_TsSlotDuration                 655   //    20ms
-
-    // execution speed related
-    #define PORT_maxTxDataPrepare                15   //   458us (measured  213us)
-    #define PORT_maxRxAckPrepare                 10   //   305us (measured   86us)
-    #define PORT_maxRxDataPrepare                10   //   305us (measured   88us)
-    #define PORT_maxTxAckPrepare                 15   //   458us (measured  211us)
-
-    // radio speed related
-    #define PORT_delayTx                        13    //   397us (measured  388us)
-    #define PORT_delayRx                        0     //     0us (can not measure)
-#endif
-
 //===== adaptive_sync accuracy
 
 #define SYNC_ACCURACY                       1     // ticks
@@ -108,6 +70,7 @@
 #define BSP_ANTENNA_BASE            GPIO_D_BASE
 #define BSP_ANTENNA_CC2538_24GHZ    GPIO_PIN_4      //!< PD4 -- 2.4ghz
 #define BSP_ANTENNA_AT215_24GHZ     GPIO_PIN_3      //!< PD3 -- subghz
+//#define DAGROOT
 
 //=========================== typedef  ========================================
 

@@ -7,7 +7,7 @@ sys.path.insert(0,os.path.join(here,'..','..','..','coap'))
 from coap import coap
 import signal
 
-MOTE_IP = 'bbbb::1415:92cc:0:2'
+MOTE_IP = 'bbbb::12:4b00:14b5:d32f'#'bbbb::1415:92cc:0:2'
 UDPPORT = 61618 # can't be the port used in OV
 
 c = coap.coap(udpPort=UDPPORT)

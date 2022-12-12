@@ -14,7 +14,6 @@
 
 #include "Include/ezr32wg330f256r60.h"
 #include "opendefs.h"
-#include "config.h"
 
 //=========================== defines =========================================
 
@@ -63,7 +62,7 @@
 #define PORT_maxRxDataPrepare                4    //  122us (measured  22us)
 #define PORT_maxTxAckPrepare                10    //  122us (measured  94us)
 // radio speed related
-#if OPENWSN_IEEE802154E_SECURITY_C
+#ifdef L2_SECURITY_ACTIVE
 #define PORT_delayTx                         7    //  366us (measured xxxus)
 #else
 #define PORT_delayTx                        12    //  366us (measured xxxus)

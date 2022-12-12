@@ -4,11 +4,9 @@
 \author Thomas Watteyne <watteyne@eecs.berkeley.edu>, October 2014.
 */
 
-#include "config.h"
 #include "opendefs.h"
 //===== drivers
 #include "openserial.h"
-
 //===== stack
 #include "openstack.h"
 //-- cross-layer
@@ -33,15 +31,16 @@
 #include "icmpv6.h"
 #include "icmpv6echo.h"
 #include "icmpv6rpl.h"
+#include "track.h"
 //-- 04-TRAN
-#include "sock.h"
+#include "openudp.h"
 
-//===== application-layer
-#include "openweb.h"
+#ifndef RAM_SIZE_64KB
 
 //===== applications
 #include "openapps.h"
 
+#endif
 
 //=========================== variables =======================================
 
@@ -53,55 +52,46 @@
 
 void openstack_init(void) {
 
-    //===== drivers
-    opentimers_init();
-    openserial_init();
+   //===== drivers
+   opentimers_init();
+   openserial_init();
 
-    //===== stack
-    //-- cross-layer
-    idmanager_init();    // call first since initializes EUI64 and isDAGroot
-    openqueue_init();
-    openrandom_init();
+   //===== stack
+   //-- cross-layer
+   idmanager_init();    // call first since initializes EUI64 and isDAGroot
+   openqueue_init();
+   openrandom_init();
 
-    //-- 02a-TSCH
-#if OPENWSN_ADAPTIVE_SYNC_C
-    adaptive_sync_init();
+   //-- 02a-TSCH
+//   adaptive_sync_init();
+   ieee154e_init();
+   //-- 02b-RES
+   schedule_init();
+   sixtop_init();
+   neighbors_init();
+   msf_init();
+   //-- 03a-IPHC
+   openbridge_init();
+   iphc_init();
+   frag_init();
+   //-- 03b-IPv6
+   forwarding_init();
+   icmpv6_init();
+   icmpv6echo_init();
+   icmpv6rpl_init();
+   track_init();
+   //-- 04-TRAN
+   openudp_init();
+   
+#ifndef RAM_SIZE_64KB
+   //===== applications
+   openapps_init();
 #endif
 
-    ieee154e_init();
-    //-- 02b-RES
-    schedule_init();
-    sixtop_init();
-    neighbors_init();
-    msf_init();
-    //-- 03a-IPHC
-    openbridge_init();
-    iphc_init();
-
-#if OPENWSN_6LO_FRAGMENTATION_C
-    frag_init();
-#endif
-
-    //-- 03b-IPv6
-    forwarding_init();
-    icmpv6_init();
-
-#if OPENWSN_ICMPV6_ECHO_C
-    icmpv6echo_init();
-#endif
-
-    icmpv6rpl_init();
-    //-- 04-TRAN
-
-#if OPENWSN_UDP_C
-    sock_udp_init();
-#endif
-
-    //===== application-layer
-    openweb_init();
-
-    //===== applications
-    openapps_init();
-
-    LOG_SUCCESS(COMPONENT_OPENWSN, ERR_BOOTED, (errorparameter_t) 0, (errorparameter_t) 0);
+   openserial_printInfo(
+      COMPONENT_OPENWSN,ERR_BOOTED,
+      (errorparameter_t)0,
+      (errorparameter_t)0
+   );
 }
+

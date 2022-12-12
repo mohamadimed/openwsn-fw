@@ -53,9 +53,6 @@ SECTIONS
         *(.bss*)
         *(COMMON)
         _ebss = .;
-        __bss_end__ = .;
-        _end = __bss_end__;
-        end = _end;
     } > SRAM
 
     .flashcca :

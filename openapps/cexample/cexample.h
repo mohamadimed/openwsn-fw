@@ -8,17 +8,16 @@
 \{
 */
 
-#include "config.h"
-#include "coap.h"
+#include "opencoap.h"
 
 //=========================== define ==========================================
 
 //=========================== typedef =========================================
 
 typedef struct {
-    coap_resource_desc_t desc;
-    opentimers_id_t timerId;
-    bool busySendingCexample;
+   coap_resource_desc_t         desc;
+   opentimers_id_t              timerId;
+   bool                         busySendingCexample;
 } cexample_vars_t;
 
 //=========================== variables =======================================

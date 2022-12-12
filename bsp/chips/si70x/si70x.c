@@ -66,6 +66,9 @@ void si70x_init(void) {
     // and the second position holds the actual configuration
     config[0] = SI70X_USER_REG_WRITE;
 
+    
+    
+    
     // Set the configuration bits without changing those reserved
     config[1] |= SI70X_USER_CONFIG;
 
@@ -101,8 +104,10 @@ uint16_t si70x_read_temperature(void) {
     i2c_write_byte(SI70X_ADDRESS, SI70X_TEMPERATURE_HM_CMD);
     i2c_read_bytes(SI70X_ADDRESS, si70x_temperature, sizeof(si70x_temperature));
     
-    temperature = ((uint16_t)(si70x_temperature[0]) << 8) | (uint16_t)(si70x_temperature[1]);
-    
+    temperature = ((uint16_t)(si70x_temperature[0]) << 8) | (uint16_t)(si70x_temperature[1]);//in updated version
+    //temperature = (si70x_temperature[0] << 8) | (si70x_temperature[1] & SI70X_STATUS_MASK); //from minas version
+
+
     return temperature;
 }
 

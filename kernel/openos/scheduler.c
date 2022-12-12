@@ -13,10 +13,7 @@
 //=========================== variables =======================================
 
 scheduler_vars_t scheduler_vars;
-
-#if SCHEDULER_DEBUG_ENABLE
-scheduler_dbg_t scheduler_dbg;
-#endif
+scheduler_dbg_t  scheduler_dbg;
 
 //=========================== prototypes ======================================
 
@@ -28,9 +25,7 @@ void scheduler_init(void) {
 
     // initialization module variables
     memset(&scheduler_vars,0,sizeof(scheduler_vars_t));
-#if SCHEDULER_DEBUG_ENABLE
     memset(&scheduler_dbg,0,sizeof(scheduler_dbg_t));
-#endif
 
     // enable the scheduler's interrupt so SW can wake up the scheduler
     SCHEDULER_ENABLE_INTERRUPT();
@@ -60,9 +55,7 @@ void scheduler_start(void) {
          pThisTask->cb            = NULL;
          pThisTask->prio          = TASKPRIO_NONE;
          pThisTask->next          = NULL;
-#if SCHEDULER_DEBUG_ENABLE
          scheduler_dbg.numTasksCur--;
-#endif
       }
       debugpins_task_clr();
       board_sleep();
@@ -106,26 +99,12 @@ void scheduler_push_task(task_cbt cb, task_prio_t prio) {
     taskContainer->next            = *taskListWalker;
     *taskListWalker                = taskContainer;
     // maintain debug stats
-#if SCHEDULER_DEBUG_ENABLE
     scheduler_dbg.numTasksCur++;
     if (scheduler_dbg.numTasksCur>scheduler_dbg.numTasksMax) {
         scheduler_dbg.numTasksMax   = scheduler_dbg.numTasksCur;
     }
-#endif
 
     ENABLE_INTERRUPTS();
 }
 
-
-#if SCHEDULER_DEBUG_ENABLE
-uint8_t scheduler_debug_get_TasksCur(void)
-{
-   return scheduler_dbg.numTasksCur;
-}
-
-uint8_t scheduler_debug_get_TasksMax(void)
-{
-   return scheduler_dbg.numTasksMax;
-}
-#endif
 //=========================== private =========================================

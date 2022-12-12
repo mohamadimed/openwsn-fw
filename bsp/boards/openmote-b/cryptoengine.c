@@ -3,10 +3,6 @@
   
 \author Malisa Vucinic <malishav@gmail.com>, March 2015.
 */
-#include "config.h"
-
-#if BOARD_CRYPTOENGINE_ENABLED
-
 #include <stdint.h>
 
 #include <headers/hw_sys_ctrl.h>
@@ -161,5 +157,3 @@ static owerror_t load_key(uint8_t key[16], uint8_t* /* out */ key_location) {
    *key_location = DEFAULT_KEY_AREA;
    return E_SUCCESS;
 }
-
-#endif /* BOARD_CRYPTOENGINE_ENABLED */

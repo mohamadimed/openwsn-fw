@@ -15,9 +15,10 @@
 \{
 */
 
-#include "config.h"
 #include "opendefs.h"
-#include "coap.h"
+#include "opencoap.h"
+#include "schedule.h"
+
 //=========================== define ==========================================
 
 //=========================== typedef =========================================
@@ -25,7 +26,7 @@
 //=========================== variables =======================================
 
 typedef struct {
-    coap_resource_desc_t desc;
+   coap_resource_desc_t desc;
 } c6t_vars_t;
 
 //=========================== prototypes ======================================

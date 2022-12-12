@@ -15,33 +15,41 @@
 
 static const uint8_t dagroot_mac64b[] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
 static monitor_expiration_vars_t  monitor_expiration_vars;
 #endif
 
 //=========================== prototypes ======================================
 
-owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
-                                  open_addr_t *temp_addr_64b,
-                                  uint8_t *dispatch,
-                                  uint8_t *tf,
-                                  uint8_t *nh,
-                                  uint8_t *hlim,
-                                  uint8_t *sam,
-                                  uint8_t *m,
-                                  uint8_t *dam,
-                                  OpenQueueEntry_t *msg,
-                                  ipv6_header_iht *ipv6_header,
-                                  uint8_t previousLen);
+uint8_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
+                                open_addr_t *temp_addr_64b,
+                                uint8_t *dispatch,
+                                uint8_t *tf,
+                                uint8_t *nh,
+                                uint8_t *hlim,
+                                uint8_t *sam,
+                                uint8_t *m,
+                                uint8_t *dam,
+                                OpenQueueEntry_t *msg,
+                                ipv6_header_iht *ipv6_header,
+                                uint8_t previousLen);
 
 //===== IPv6 hop-by-hop header
-owerror_t iphc_prependIPv6HopByHopHeader(OpenQueueEntry_t **msg, uint8_t nextheader, rpl_option_ht *rpl_option);
+void iphc_prependIPv6HopByHopHeader(
+        OpenQueueEntry_t *msg,
+        uint8_t nextheader,
+        rpl_option_ht *rpl_option
+);
 
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
 // IPv6 Deadline hop-by-hop header
-owerror_t iphc_prependIPv6DeadlineHeader(OpenQueueEntry_t **msg);
+void iphc_prependIPv6DeadlineHeader(
+   OpenQueueEntry_t* msg
+);
 
-uint8_t iphc_getAsnLen(uint8_t* asn);
+uint8_t iphc_getAsnLen(
+   uint8_t* asn
+);
 #endif
 
 //=========================== public ==========================================
@@ -55,7 +63,7 @@ owerror_t iphc_sendFromForwarding(
         ipv6_header_iht *ipv6_outer_header,
         ipv6_header_iht *ipv6_inner_header,
         rpl_option_ht *rpl_option,
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
         deadline_option_ht*	deadline_option,
 #endif
         uint32_t *flow_label,
@@ -75,7 +83,9 @@ owerror_t iphc_sendFromForwarding(
     // error checking
     if (idmanager_getIsDAGroot() == TRUE &&
         packetfunctions_isAllRoutersMulticast(&(msg->l3_destinationAdd)) == FALSE) {
-        LOG_CRITICAL(COMPONENT_IPHC, ERR_BRIDGE_MISMATCH, (errorparameter_t) 0, (errorparameter_t) 0);
+        openserial_printCritical(COMPONENT_IPHC, ERR_BRIDGE_MISMATCH,
+                                 (errorparameter_t) 0,
+                                 (errorparameter_t) 0);
         return E_FAIL;
     }
 
@@ -83,7 +93,9 @@ owerror_t iphc_sendFromForwarding(
     if (ipv6_outer_header->src.type != ADDR_NONE) {
         // there is IPinIP check hop limit in ip in ip encapsulation
         if (ipv6_outer_header->hop_limit == 0) {
-            LOG_ERROR(COMPONENT_IPHC, ERR_HOP_LIMIT_REACHED, (errorparameter_t) 0, (errorparameter_t) 0);
+            openserial_printError(COMPONENT_IPHC, ERR_HOP_LIMIT_REACHED,
+                                  (errorparameter_t) 0,
+                                  (errorparameter_t) 0);
             return E_FAIL;
         } else {
             // decrement the packet's hop limit
@@ -91,7 +103,9 @@ owerror_t iphc_sendFromForwarding(
         }
     } else {
         if (ipv6_inner_header->hop_limit == 0) {
-            LOG_ERROR(COMPONENT_IPHC, ERR_HOP_LIMIT_REACHED, (errorparameter_t) 0, (errorparameter_t) 0);
+            openserial_printError(COMPONENT_IPHC, ERR_HOP_LIMIT_REACHED,
+                                  (errorparameter_t) 0,
+                                  (errorparameter_t) 0);
             return E_FAIL;
         } else {
             // decrement the packet's hop limit
@@ -136,40 +150,26 @@ owerror_t iphc_sendFromForwarding(
                     )
                     ) {
                 // hop limit
-                if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-                    return E_FAIL;
-                }
+                packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
                 *((uint8_t * )(msg->payload)) = ipv6_outer_header->hop_limit;
                 // type
-                if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-                    return E_FAIL;
-                }
+                packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
                 *((uint8_t * )(msg->payload)) = IPECAP_6LOTH_TYPE;
                 // length 
-                if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-                    return E_FAIL;
-                }
+                packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
                 *((uint8_t * )(msg->payload)) = ELECTIVE_6LoRH | 1;
             } else {
                 if (sam == IPHC_SAM_128B) {
                     // encapsulate address
-                    if (packetfunctions_writeAddress(&msg, &(msg->l3_sourceAdd), OW_BIG_ENDIAN) == E_FAIL){
-                        return E_FAIL;
-                    }
+                    packetfunctions_writeAddress(msg, &(msg->l3_sourceAdd), OW_BIG_ENDIAN);
                     // hoplim
-                    if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-                        return E_FAIL;
-                    }
+                    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
                     *((uint8_t * )(msg->payload)) = ipv6_outer_header->hop_limit;
                     // type
-                    if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-                        return E_FAIL;
-                    }
+                    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
                     *((uint8_t * )(msg->payload)) = IPECAP_6LOTH_TYPE;
                     // length
-                    if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-                        return E_FAIL;
-                    }
+                    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
                     *((uint8_t * )(msg->payload)) = ELECTIVE_6LoRH | 17;
                 }
             }
@@ -178,15 +178,13 @@ owerror_t iphc_sendFromForwarding(
         }
     }
 
-#if DEADLINE_OPTION
-    if ((msg->creator == COMPONENT_UEXPIRATION) && (deadline_option != NULL)) {
+#ifdef DEADLINE_OPTION_ENABLED
+    if ( (msg->creator == COMPONENT_UEXPIRATION) && (deadline_option != NULL) ) {
         if (
-                deadline_option->optionType == DEADLINE_HOPBYHOP_HEADER_OPTION_TYPE &&
-                packetfunctions_isBroadcastMulticast(&(msg->l3_destinationAdd)) == FALSE
-                ) {
-            if (iphc_prependIPv6DeadlineHeader(&msg) == E_FAIL){
-                return E_FAIL;
-            }
+            deadline_option->optionType==DEADLINE_HOPBYHOP_HEADER_OPTION_TYPE && 
+            packetfunctions_isBroadcastMulticast(&(msg->l3_destinationAdd))==FALSE
+        ){                    
+                        iphc_prependIPv6DeadlineHeader(msg);
         }
     }
 #endif
@@ -197,16 +195,12 @@ owerror_t iphc_sendFromForwarding(
             rpl_option->optionType == RPL_HOPBYHOP_HEADER_OPTION_TYPE &&
             packetfunctions_isBroadcastMulticast(&(msg->l3_destinationAdd)) == FALSE
             ) {
-        if (iphc_prependIPv6HopByHopHeader(&msg, msg->l4_protocol, rpl_option) == E_FAIL){
-            return E_FAIL;
-        }
+        iphc_prependIPv6HopByHopHeader(msg, msg->l4_protocol, rpl_option);
     }
 
     // copy RH3s back if length > 0
     if (rh3_length > 0) {
-        if (packetfunctions_reserveHeader(&msg, rh3_length) == E_FAIL) {
-            return E_FAIL;
-        }
+        packetfunctions_reserveHeaderSize(msg, rh3_length);
         memcpy(&msg->payload[0], &rh3_copy[0], rh3_length);
     }
 
@@ -215,17 +209,11 @@ owerror_t iphc_sendFromForwarding(
             (*((uint8_t * )(msg->payload)) & FORMAT_6LORH_MASK) == CRITICAL_6LORH ||
             (*((uint8_t * )(msg->payload)) & FORMAT_6LORH_MASK) == ELECTIVE_6LoRH
             ) {
-        if (packetfunctions_reserveHeader(&msg, sizeof(uint8_t)) == E_FAIL) {
-            return E_FAIL;
-        }
+        packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
         *((uint8_t * )(msg->payload)) = PAGE_DISPATCH_NO_1;
     }
 
-#if OPENWSN_6LO_FRAGMENTATION_C
     return frag_fragment6LoPacket(msg);
-#else
-    return sixtop_send(msg);
-#endif
 }
 
 //send from bridge: 6LoWPAN header already added by OpenLBR, send as is
@@ -233,7 +221,9 @@ owerror_t iphc_sendFromBridge(OpenQueueEntry_t *msg) {
     msg->owner = COMPONENT_IPHC;
     // error checking
     if (idmanager_getIsDAGroot() == FALSE) {
-        LOG_CRITICAL(COMPONENT_IPHC, ERR_BRIDGE_MISMATCH, (errorparameter_t) 1, (errorparameter_t) 0);
+        openserial_printCritical(COMPONENT_IPHC, ERR_BRIDGE_MISMATCH,
+                                 (errorparameter_t) 1,
+                                 (errorparameter_t) 0);
         return E_FAIL;
     }
 
@@ -256,9 +246,9 @@ void iphc_receive(OpenQueueEntry_t *msg) {
     uint8_t page_length;
     rpl_option_ht rpl_option;
     uint8_t rpi_length;
-#if DEADLINE_OPTION
-    deadline_option_ht *deadline_ptr = NULL;
-    deadline_option_ht curr_deadline_option;
+#ifdef DEADLINE_OPTION_ENABLED
+    deadline_option_ht*  deadline_ptr = NULL;
+    deadline_option_ht   curr_deadline_option;
 #endif
 
     msg->owner = COMPONENT_IPHC;
@@ -267,31 +257,47 @@ void iphc_receive(OpenQueueEntry_t *msg) {
     memset(&ipv6_inner_header, 0, sizeof(ipv6_header_iht));
     memset(&rpl_option, 0, sizeof(rpl_option_ht));
 
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
     ipv6_outer_header.deadline_option = NULL;
 #endif
-
+    
     // then regular header
-    if (iphc_retrieveIPv6Header(msg, &ipv6_outer_header, &ipv6_inner_header, &page_length) == E_FAIL) {
-        openqueue_freePacketBuffer(msg);
-        return;
-    }
-
+    iphc_retrieveIPv6Header(msg, &ipv6_outer_header, &ipv6_inner_header, &page_length);
+                                                                                        
     // if the address is broadcast address, the ipv6 header is the inner header
-    if (idmanager_getIsDAGroot() == FALSE || packetfunctions_isBroadcastMulticast(&(ipv6_inner_header.dest))) {
-        packetfunctions_tossHeader(&msg, page_length);
-        if (ipv6_outer_header.next_header == IANA_IPv6HOPOPT && ipv6_outer_header.hopByhop_option != NULL) {
+    if (
+            idmanager_getIsDAGroot() == FALSE ||
+            packetfunctions_isBroadcastMulticast(&(ipv6_inner_header.dest))
+            ) {
+        packetfunctions_tossHeader(msg, page_length);
+        if (
+                ipv6_outer_header.next_header == IANA_IPv6HOPOPT &&
+                ipv6_outer_header.hopByhop_option != NULL
+                ) {
             // retrieve hop-by-hop header (includes RPL option)
-            rpi_length = iphc_retrieveIPv6HopByHopHeader(msg, &rpl_option);
-#if DEADLINE_OPTION
-            if (ipv6_outer_header.deadline_option) {
-                memset(&curr_deadline_option, 0, sizeof(curr_deadline_option));
-                iphc_retrieveIPv6DeadlineHeader(msg, ipv6_outer_header.deadline_option, &curr_deadline_option);
-                deadline_ptr = &curr_deadline_option;
+            rpi_length = iphc_retrieveIPv6HopByHopHeader(
+                    msg,
+                    &rpl_option
+            );
+
+#ifdef DEADLINE_OPTION_ENABLED
+            if(ipv6_outer_header.deadline_option){
+                
+                memset(&curr_deadline_option,0,sizeof(curr_deadline_option));     
+                    iphc_retrieveIPv6DeadlineHeader(
+                                  msg,
+                                  ipv6_outer_header.deadline_option,
+                                  &curr_deadline_option
+                             );                 
+                 deadline_ptr = &curr_deadline_option;               
             }
 #endif
+
             // toss the headers
-            packetfunctions_tossHeader(&msg, rpi_length);
+            packetfunctions_tossHeader(
+                    msg,
+                    rpi_length
+            );
         }
 
         // send up the stack
@@ -299,13 +305,14 @@ void iphc_receive(OpenQueueEntry_t *msg) {
                 msg,
                 &ipv6_outer_header,
                 &ipv6_inner_header,
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
                 deadline_ptr,
 #endif
                 &rpl_option
         );
-    } else {
-        openbridge_receive(msg);                   //out to the OpenVisualizer
+    } else {            //out to the openVisualizer
+        
+    openbridge_receive(msg);             // {debugpins_frame_toggle();debugpins_frame_toggle();}           //out to the OpenVisualizer
     }
 }
 
@@ -313,8 +320,11 @@ void iphc_receive(OpenQueueEntry_t *msg) {
 
 //===== IPv6 header
 
+/**
+\brief Prepend an IPv6 header to a message.
+*/
 owerror_t iphc_prependIPv6Header(
-        OpenQueueEntry_t **msg,
+        OpenQueueEntry_t *msg,
         uint8_t tf,
         uint32_t value_flowLabel,
         uint8_t nh,
@@ -331,16 +341,15 @@ owerror_t iphc_prependIPv6Header(
         open_addr_t *value_src,
         uint8_t fw_SendOrfw_Rcv
 ) {
+
     uint8_t temp_8b;
 
     // destination address
     switch (dam) {
         case IPHC_DAM_ELIDED:
             if (m == IPHC_M_YES) {
-                if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-                    return E_FAIL;
-                }
-                *((uint8_t * )((*msg)->payload)) = value_dest->addr_128b[15];
+                packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+                *((uint8_t * )(msg->payload)) = value_dest->addr_128b[15];
             } else {
                 //nothing
             }
@@ -350,14 +359,15 @@ owerror_t iphc_prependIPv6Header(
                 // tengfei: to do
             } else {
                 if (value_dest->type != ADDR_16B) {
-                    LOG_CRITICAL(COMPONENT_IPHC, ERR_WRONG_ADDR_TYPE,
-                                 (errorparameter_t) value_dest->type,
-                                 (errorparameter_t) 0);
+                    openserial_printCritical(
+                            COMPONENT_IPHC,
+                            ERR_WRONG_ADDR_TYPE,
+                            (errorparameter_t) value_dest->type,
+                            (errorparameter_t) 0
+                    );
                     return E_FAIL;
                 };
-                if (packetfunctions_writeAddress(msg, value_dest, OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, value_dest, OW_BIG_ENDIAN);
             }
             break;
         case IPHC_DAM_64B:
@@ -365,14 +375,15 @@ owerror_t iphc_prependIPv6Header(
                 // tengfei: to do
             } else {
                 if (value_dest->type != ADDR_64B) {
-                    LOG_CRITICAL(COMPONENT_IPHC, ERR_WRONG_ADDR_TYPE,
-                                 (errorparameter_t) value_dest->type,
-                                 (errorparameter_t) 1);
+                    openserial_printCritical(
+                            COMPONENT_IPHC,
+                            ERR_WRONG_ADDR_TYPE,
+                            (errorparameter_t) value_dest->type,
+                            (errorparameter_t) 1
+                    );
                     return E_FAIL;
                 };
-                if (packetfunctions_writeAddress(msg, value_dest, OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, value_dest, OW_BIG_ENDIAN);
             }
             break;
         case IPHC_DAM_128B:
@@ -380,18 +391,24 @@ owerror_t iphc_prependIPv6Header(
                 // tengfei: to do
             } else {
                 if (value_dest->type != ADDR_128B) {
-                    LOG_CRITICAL(COMPONENT_IPHC, ERR_WRONG_ADDR_TYPE,
-                                 (errorparameter_t) value_dest->type,
-                                 (errorparameter_t) 2);
+                    openserial_printCritical(
+                            COMPONENT_IPHC,
+                            ERR_WRONG_ADDR_TYPE,
+                            (errorparameter_t) value_dest->type,
+                            (errorparameter_t) 2
+                    );
                     return E_FAIL;
                 };
-                if (packetfunctions_writeAddress(msg, value_dest, OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, value_dest, OW_BIG_ENDIAN);
             }
             break;
         default:
-            LOG_CRITICAL(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 0, (errorparameter_t) dam);
+            openserial_printCritical(
+                    COMPONENT_IPHC,
+                    ERR_6LOWPAN_UNSUPPORTED,
+                    (errorparameter_t) 0,
+                    (errorparameter_t) dam
+            );
             return E_FAIL;
     }
 
@@ -401,112 +418,114 @@ owerror_t iphc_prependIPv6Header(
             break;
         case IPHC_SAM_16B:
             if (fw_SendOrfw_Rcv == PCKTSEND) {
-                if (packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_16B)), OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_16B)), OW_BIG_ENDIAN);
             }
             if (fw_SendOrfw_Rcv == PCKTFORWARD) {
                 if (value_src->type != ADDR_16B) {
-                    LOG_CRITICAL(COMPONENT_IPHC, ERR_WRONG_ADDR_TYPE,
-                                 (errorparameter_t) value_src->type,
-                                 (errorparameter_t) 0);
+                    openserial_printCritical(
+                            COMPONENT_IPHC,
+                            ERR_WRONG_ADDR_TYPE,
+                            (errorparameter_t) value_src->type,
+                            (errorparameter_t) 0
+                    );
                     return E_FAIL;
                 }
-                if (packetfunctions_writeAddress(msg, value_src, OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, value_src, OW_BIG_ENDIAN);
             }
             break;
         case IPHC_SAM_64B:
             if (fw_SendOrfw_Rcv == PCKTSEND) {
-                if (packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_64B)), OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_64B)), OW_BIG_ENDIAN);
             }
             if (fw_SendOrfw_Rcv == PCKTFORWARD) {
                 if (value_src->type != ADDR_64B) {
-                    LOG_CRITICAL(COMPONENT_IPHC, ERR_WRONG_ADDR_TYPE,
-                                 (errorparameter_t) value_src->type,
-                                 (errorparameter_t) 1);
+                    openserial_printCritical(
+                            COMPONENT_IPHC,
+                            ERR_WRONG_ADDR_TYPE,
+                            (errorparameter_t) value_src->type,
+                            (errorparameter_t) 1
+                    );
                     return E_FAIL;
                 }
-                if (packetfunctions_writeAddress(msg, value_src, OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, value_src, OW_BIG_ENDIAN);
             }
             break;
         case IPHC_SAM_128B:
             if (fw_SendOrfw_Rcv == PCKTSEND) {
-                if (packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_64B)), OW_BIG_ENDIAN) == E_FAIL ||
-                    packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_PREFIX)), OW_BIG_ENDIAN) == E_FAIL) {
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_64B)), OW_BIG_ENDIAN);
+                packetfunctions_writeAddress(msg, (idmanager_getMyID(ADDR_PREFIX)), OW_BIG_ENDIAN);
             }
             if (fw_SendOrfw_Rcv == PCKTFORWARD) {
                 if (value_src->type != ADDR_128B) {
-                    LOG_CRITICAL(COMPONENT_IPHC, ERR_WRONG_ADDR_TYPE,
-                                 (errorparameter_t) value_src->type,
-                                 (errorparameter_t) 2);
+                    openserial_printCritical(
+                            COMPONENT_IPHC,
+                            ERR_WRONG_ADDR_TYPE,
+                            (errorparameter_t) value_src->type,
+                            (errorparameter_t) 2
+                    );
                     return E_FAIL;
                 }
-                if (packetfunctions_writeAddress(msg, value_src, OW_BIG_ENDIAN) == E_FAIL){
-                    return E_FAIL;
-                }
+                packetfunctions_writeAddress(msg, value_src, OW_BIG_ENDIAN);
             }
             break;
         default:
-            LOG_CRITICAL(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 1, (errorparameter_t) sam);
+            openserial_printCritical(
+                    COMPONENT_IPHC,
+                    ERR_6LOWPAN_UNSUPPORTED,
+                    (errorparameter_t) 1,
+                    (errorparameter_t) sam
+            );
             return E_FAIL;
     }
 
     // hop limit
     switch (hlim) {
         case IPHC_HLIM_INLINE:
-            if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-                return E_FAIL;
-            }
-            *((uint8_t * )((*msg)->payload)) = value_hopLimit;
+            packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+            *((uint8_t * )(msg->payload)) = value_hopLimit;
             break;
         case IPHC_HLIM_1:
         case IPHC_HLIM_64:
         case IPHC_HLIM_255:
             break;
         default:
-            LOG_CRITICAL(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 2, (errorparameter_t) hlim);
+            openserial_printCritical(
+                    COMPONENT_IPHC,
+                    ERR_6LOWPAN_UNSUPPORTED,
+                    (errorparameter_t) 2,
+                    (errorparameter_t) hlim
+            );
             return E_FAIL;
     }
 
     // next header
     switch (nh) {
         case IPHC_NH_INLINE:
-            if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-                return E_FAIL;
-            }
-            *((uint8_t * )((*msg)->payload)) = value_nextHeader;
+            packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+            *((uint8_t * )(msg->payload)) = value_nextHeader;
             break;
         case IPHC_NH_COMPRESSED:
             //do nothing, the next header will be there
             break;
         default:
-            LOG_CRITICAL(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 3, (errorparameter_t) nh);
+            openserial_printCritical(
+                    COMPONENT_IPHC,
+                    ERR_6LOWPAN_UNSUPPORTED,
+                    (errorparameter_t) 3,
+                    (errorparameter_t) nh
+            );
             return E_FAIL;
     }
 
     // flowlabel
     switch (tf) {
         case IPHC_TF_3B:
-            if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-                return E_FAIL;
-            }
-            *((uint8_t * )((*msg)->payload)) = ((uint32_t)(value_flowLabel & 0x000000ff) >> 0);
-            if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-                return E_FAIL;
-            }
-            *((uint8_t * )((*msg)->payload)) = ((uint32_t)(value_flowLabel & 0x0000ff00) >> 8);
-            if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-                return E_FAIL;
-            }
-            *((uint8_t * )((*msg)->payload)) = ((uint32_t)(value_flowLabel & 0x00ff0000) >> 16);
+            packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+            *((uint8_t * )(msg->payload)) = ((uint32_t)(value_flowLabel & 0x000000ff) >> 0);
+            packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+            *((uint8_t * )(msg->payload)) = ((uint32_t)(value_flowLabel & 0x0000ff00) >> 8);
+            packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+            *((uint8_t * )(msg->payload)) = ((uint32_t)(value_flowLabel & 0x00ff0000) >> 16);
             break;
         case IPHC_TF_ELIDED:
             break;
@@ -515,7 +534,12 @@ owerror_t iphc_prependIPv6Header(
         case IPHC_TF_1B:
             //unsupported
         default:
-            LOG_CRITICAL(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 4, (errorparameter_t) tf);
+            openserial_printCritical(
+                    COMPONENT_IPHC,
+                    ERR_6LOWPAN_UNSUPPORTED,
+                    (errorparameter_t) 4,
+                    (errorparameter_t) tf
+            );
             return E_FAIL;
     }
 
@@ -527,25 +551,24 @@ owerror_t iphc_prependIPv6Header(
     temp_8b |= m << IPHC_M;
     temp_8b |= dac << IPHC_DAC;
     temp_8b |= dam << IPHC_DAM;
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = temp_8b;
+    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+    *((uint8_t * )(msg->payload)) = temp_8b;
     temp_8b = 0;
     temp_8b |= IPHC_DISPATCH_IPHC << IPHC_DISPATCH;
     temp_8b |= tf << IPHC_TF;
     temp_8b |= nh << IPHC_NH;
     temp_8b |= hlim << IPHC_HLIM;
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = temp_8b;
+    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+    *((uint8_t * )(msg->payload)) = temp_8b;
 
     return E_SUCCESS;
 }
 
-owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_outer_header,
-                                  ipv6_header_iht *ipv6_inner_header, uint8_t *page_length) {
+/**
+\brief Retrieve an IPv6 header from a message.
+*/
+void iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_outer_header,
+                             ipv6_header_iht *ipv6_inner_header, uint8_t *page_length) {
     uint8_t temp_8b;
     open_addr_t temp_addr_16b;
     open_addr_t temp_addr_64b;
@@ -595,10 +618,13 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
                     lorh_type = *((uint8_t * )(msg->payload) + *page_length + extention_header_length + 1);
                     if (lorh_type <= RH3_6LOTH_TYPE_4) {
                         if (rh3_index == MAXNUM_RH3) {
-                            LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED,
-                                      (errorparameter_t) 13,
-                                      (errorparameter_t)(rh3_index));
-                            return E_FAIL;
+                            openserial_printError(
+                                    COMPONENT_IPHC,
+                                    ERR_6LOWPAN_UNSUPPORTED,
+                                    (errorparameter_t) 13,
+                                    (errorparameter_t)(rh3_index)
+                            );
+                            return;
                         }
                         if (rh3_index == 0) {
                             if (ipv6_outer_header->hopByhop_option == NULL) {
@@ -632,7 +658,8 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
                             if (ipv6_outer_header->routing_header[0] == NULL) {
                                 ipv6_outer_header->next_header = IANA_IPv6HOPOPT;
                             }
-                            ipv6_outer_header->hopByhop_option = (uint8_t * )(msg->payload) + *page_length + \
+                            ipv6_outer_header->hopByhop_option = (uint8_t * )(msg->payload) + \
+                                *page_length + \
                                 extention_header_length;
                             switch (temp_8b & (I_FLAG | K_FLAG)) {
                                 case 0:
@@ -648,9 +675,12 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
                             }
                         } else {
                             //log wrong inf
-                            LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED,
-                                      (errorparameter_t) 14,
-                                      (errorparameter_t)(lorh_type));
+                            openserial_printError(
+                                    COMPONENT_IPHC,
+                                    ERR_6LOWPAN_UNSUPPORTED,
+                                    (errorparameter_t) 14,
+                                    (errorparameter_t)(lorh_type)
+                            );
                         }
                     }
                     break;
@@ -668,8 +698,8 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
                                 msg->payload + ipv6_outer_header->header_length + *page_length +
                                 extention_header_length);
                         ipv6_outer_header->header_length += 1;
-                        // destination address maybe is the first address in RH3 6LoRH OR dest adress in IPHC, reset
-                        // first update destination address if necessary after the processing
+                        // destination address maybe is the first address in RH3 6LoRH OR dest adress in IPHC, reset first
+                        // update destination address if necessary after the processing
                         ipv6_outer_header->dest.type = ADDR_NONE;
                         memset(&(ipv6_outer_header->dest.addr_128b[0]), 0, 16);
                         if (lorh_length == 1) {
@@ -699,24 +729,31 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
                                     break;
                                 default:
                                     // do not support other length yet and destination address will be in RH3 or IPHC
-                                    LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED,
-                                              (errorparameter_t) 12,
-                                              (errorparameter_t)(lorh_length - 1));
+                                    openserial_printError(
+                                            COMPONENT_IPHC,
+                                            ERR_6LOWPAN_UNSUPPORTED,
+                                            (errorparameter_t) 12,
+                                            (errorparameter_t)(lorh_length - 1)
+                                    );
                             }
                         }
                     }
-#if DEADLINE_OPTION
-                    else if (lorh_type == DEADLINE_6LOTH_TYPE) {
-                        ipv6_outer_header->deadline_option = (uint8_t * )(msg->payload) + *page_length + \
-                                extention_header_length;
-                        extention_header_length += (lorh_length + 1);
-                    }
+#ifdef DEADLINE_OPTION_ENABLED
+                        else if (lorh_type == DEADLINE_6LOTH_TYPE){
+                                    ipv6_outer_header->deadline_option = (uint8_t*)(msg->payload) + \
+                                        *page_length + \
+                                        extention_header_length;
+                                    extention_header_length += (lorh_length + 1);
+                        }
 #endif
                     else {
-                        // unknown elective packet, print error and skip it
-                        LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED,
-                                  (errorparameter_t) 13,
-                                  (errorparameter_t)(rh3_index));
+                        //unknown elective packet, print error and skip it
+                        openserial_printError(
+                                COMPONENT_IPHC,
+                                ERR_6LOWPAN_UNSUPPORTED,
+                                (errorparameter_t) 13,
+                                (errorparameter_t)(rh3_index)
+                        );
                         extention_header_length += 2 + lorh_length;
                         ipv6_outer_header->rhe_length += 2 + lorh_length;
                     }
@@ -731,7 +768,7 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
     }
 
     //======================= 4. IPHC inner header =============================
-    if (iphc_retrieveIphcHeader(
+    iphc_retrieveIphcHeader(
             &temp_addr_16b,
             &temp_addr_64b,
             &dispatch,
@@ -744,14 +781,10 @@ owerror_t iphc_retrieveIPv6Header(OpenQueueEntry_t *msg, ipv6_header_iht *ipv6_o
             msg,
             ipv6_inner_header,
             extention_header_length + ipv6_outer_header->header_length + *page_length
-    ) == E_FAIL) {
-        return E_FAIL;
-    }
-
-    return E_SUCCESS;
+    );
 }
 
-owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
+uint8_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                                 open_addr_t *temp_addr_64b,
                                 uint8_t *dispatch,
                                 uint8_t *tf,
@@ -804,10 +837,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
             case IPHC_DISPATCH_IPHC:
                 break;
             default:
-                LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED,
-                          (errorparameter_t) 5,
-                          (errorparameter_t)(*dispatch));
-                return E_FAIL;
+                openserial_printError(
+                        COMPONENT_IPHC,
+                        ERR_6LOWPAN_UNSUPPORTED,
+                        (errorparameter_t) 5,
+                        (errorparameter_t)(*dispatch)
+                );
+                break;
         }
 
         // flowlabel
@@ -833,8 +869,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
             case IPHC_TF_1B:
                 //unsupported
             default:
-                LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 6, (errorparameter_t)(*tf));
-                return E_FAIL;
+                openserial_printError(
+                        COMPONENT_IPHC,
+                        ERR_6LOWPAN_UNSUPPORTED,
+                        (errorparameter_t) 6,
+                        (errorparameter_t)(*tf)
+                );
+                break;
         }
 
         // next header
@@ -854,8 +895,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                 ipv6_header->next_header_compressed = TRUE;
                 break;
             default:
-                LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 7, (errorparameter_t)(*nh));
-                return E_FAIL;
+                openserial_printError(
+                        COMPONENT_IPHC,
+                        ERR_6LOWPAN_UNSUPPORTED,
+                        (errorparameter_t) 7,
+                        (errorparameter_t)(*nh)
+                );
+                break;
         }
 
         // hop limit
@@ -874,8 +920,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                 ipv6_header->hop_limit = 255;
                 break;
             default:
-                LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 8, (errorparameter_t)(*hlim));
-                return E_FAIL;
+                openserial_printError(
+                        COMPONENT_IPHC,
+                        ERR_6LOWPAN_UNSUPPORTED,
+                        (errorparameter_t) 8,
+                        (errorparameter_t)(*hlim)
+                );
+                break;
         }
 
         // source address
@@ -903,8 +954,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                 ipv6_header->header_length += 16 * sizeof(uint8_t);
                 break;
             default:
-                LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 9, (errorparameter_t)(*sam));
-                return E_FAIL;
+                openserial_printError(
+                        COMPONENT_IPHC,
+                        ERR_6LOWPAN_UNSUPPORTED,
+                        (errorparameter_t) 9,
+                        (errorparameter_t)(*sam)
+                );
+                break;
         }
 
         // destination address
@@ -926,8 +982,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                     // tengfei: todo
                     break;
                 default:
-                    LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 10, (errorparameter_t)(*dam));
-                    return E_FAIL;
+                    openserial_printError(
+                            COMPONENT_IPHC,
+                            ERR_6LOWPAN_UNSUPPORTED,
+                            (errorparameter_t) 10,
+                            (errorparameter_t)(*dam)
+                    );
+                    break;
             }
         } else {
             switch (*dam) {
@@ -954,8 +1015,13 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                     ipv6_header->header_length += 16 * sizeof(uint8_t);
                     break;
                 default:
-                    LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 10, (errorparameter_t)(*dam));
-                    return E_FAIL;
+                    openserial_printError(
+                            COMPONENT_IPHC,
+                            ERR_6LOWPAN_UNSUPPORTED,
+                            (errorparameter_t) 10,
+                            (errorparameter_t)(*dam)
+                    );
+                    break;
             }
         }
         //TODO, check NH if compressed no?
@@ -1012,10 +1078,12 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
                                 break;
                             default:
                                 // do not support other length yet and destination address will be in RH3 or IPHC
-                                LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED,
-                                          (errorparameter_t) 12,
-                                          (errorparameter_t)(ipinip_length - 1));
-                                return E_FAIL;
+                                openserial_printError(
+                                        COMPONENT_IPHC,
+                                        ERR_6LOWPAN_UNSUPPORTED,
+                                        (errorparameter_t) 12,
+                                        (errorparameter_t)(ipinip_length - 1)
+                                );
                         }
                     }
                 }
@@ -1026,7 +1094,7 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
             }
         }
     }
-    return E_SUCCESS;
+    return page;
 }
 
 //===== IPv6 hop-by-hop header
@@ -1040,44 +1108,36 @@ owerror_t iphc_retrieveIphcHeader(open_addr_t *temp_addr_16b,
 \param[in]     nextheader      The next header value to use.
 \param[in]     rpl_option      The RPL option to include.
 */
-owerror_t iphc_prependIPv6HopByHopHeader(OpenQueueEntry_t **msg, uint8_t nextheader, rpl_option_ht *rpl_option) {
+void iphc_prependIPv6HopByHopHeader(
+        OpenQueueEntry_t *msg,
+        uint8_t nextheader,
+        rpl_option_ht *rpl_option
+) {
     uint8_t temp_8b;
 
     if ((rpl_option->flags & K_FLAG) == 0) {
-        if (packetfunctions_reserveHeader(msg, sizeof(uint16_t)) == E_FAIL) {
-            return E_FAIL;
-        }
-        (*msg)->payload[0] = (uint8_t)((rpl_option->senderRank & 0xFF00) >> 8);
-        (*msg)->payload[1] = (uint8_t)(rpl_option->senderRank & 0x00FF);
+        packetfunctions_reserveHeaderSize(msg, sizeof(uint16_t));
+        msg->payload[0] = (uint8_t)((rpl_option->senderRank & 0xFF00) >> 8);
+        msg->payload[1] = (uint8_t)(rpl_option->senderRank & 0x00FF);
     } else {
-        if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-            return E_FAIL;
-        }
-        *((uint8_t * )((*msg)->payload)) = (uint8_t)((rpl_option->senderRank & 0xFF00) >> 8);
+        packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+        *((uint8_t * )(msg->payload)) = (uint8_t)((rpl_option->senderRank & 0xFF00) >> 8);
     }
 
     if ((rpl_option->flags & I_FLAG) == 0) {
-        if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL){
-            return E_FAIL;
-        }
-        *((uint8_t * )((*msg)->payload)) = rpl_option->rplInstanceID;
+        packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+        *((uint8_t * )(msg->payload)) = rpl_option->rplInstanceID;
     }
 
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = RPI_6LOTH_TYPE;
+    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+    *((uint8_t * )(msg->payload)) = RPI_6LOTH_TYPE;
 
     temp_8b = CRITICAL_6LORH | rpl_option->flags;
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL) {
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = temp_8b;
-
-    return E_SUCCESS;
+    packetfunctions_reserveHeaderSize(msg, sizeof(uint8_t));
+    *((uint8_t * )(msg->payload)) = temp_8b;
 }
 
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
 //===== IPv6 Deadline hop-by-hop header
 /**
 \brief Prepend an IPv6 Deadline hop-by-hop header to a message.
@@ -1086,83 +1146,69 @@ owerror_t iphc_prependIPv6HopByHopHeader(OpenQueueEntry_t **msg, uint8_t nexthea
 
 \param[in,out] msg   The message to prepend the header to.
 */
-owerror_t iphc_prependIPv6DeadlineHeader(OpenQueueEntry_t **msg) {
-    uint8_t temp_8b = 0, temp_len = 0, asn_len = 0;
-    deadline_option_ht curr_deadline_option;
-    uint8_t asn_array[5];
+void iphc_prependIPv6DeadlineHeader(
+      OpenQueueEntry_t* msg
+   ){
+   uint8_t temp_8b = 0, temp_len = 0, asn_len = 0;
+   deadline_option_ht curr_deadline_option;
+   uint8_t asn_array[5];
 
-    // Origination Time (OT)
-    if ((*msg)->orgination_time_flag == 1) {
-        ieee154e_getAsn(asn_array);
-
-        asn_len = iphc_getAsnLen(asn_array);
-
-        if (packetfunctions_reserveHeader(msg, asn_len) == E_FAIL) {
-            return E_FAIL
-        }
-        memcpy(&((*msg)->payload[0]), &asn_array, asn_len * sizeof(uint8_t));
-        temp_len += asn_len;
-
-        //set OTL flag value
-        curr_deadline_option.org_otl = asn_len - 1;
-    } else {
-        //set OTL flag value
-        curr_deadline_option.org_otl = 0;
-    }
-
-    // Expiration Time (ET)
-    ieee154e_calculateExpTime((*msg)->max_delay, asn_array);
-    asn_len = iphc_getAsnLen(asn_array);
-    if (packetfunctions_reserveHeader(msg, asn_len) == E_FAIL) {
-        return E_FAIL;
-    }
-    memcpy(&((*msg)->payload[0]), &asn_array, asn_len * sizeof(uint8_t));
-    temp_len += asn_len;
-
-    // 4th byte
-    // TU(2bytes) | EXP(3bytes) | RSV(3bytes)
-    curr_deadline_option.time_unit = 2; // in ASN
-    curr_deadline_option.exponent = 0; // Time in ASN
-    curr_deadline_option.rsv = 0; // Reserved
-    temp_8b = (curr_deadline_option.time_unit << 6) | (curr_deadline_option.exponent << 3) | curr_deadline_option.rsv;
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL){
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = temp_8b;
-    temp_len++;
-
-    // 3rd byte
-    // O_FLAG(1byte) | D_FLAG(1byte) | ETL(3bytes) | OTL(3bytes)
-    curr_deadline_option.exp_etl = asn_len - 1;
-
-    curr_deadline_option.o_flag = (*msg)->orgination_time_flag;
-    curr_deadline_option.d_flag = (*msg)->drop_flag;
-
-    temp_8b = ((*msg)->orgination_time_flag << 7) | ((*msg)->drop_flag << 6) | (curr_deadline_option.exp_etl << 3) |
-              (curr_deadline_option.org_otl);
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL){
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = temp_8b;
-    temp_len++;
-
-    // 2nd byte : Elective Header Type : DEADLINE
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL){
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = DEADLINE_6LOTH_TYPE;
-    temp_len++;
-
-    // 1st byte : 6LoRH Type: ELECTIVE
-    temp_8b = ELECTIVE_6LoRH | temp_len;
-    if (packetfunctions_reserveHeader(msg, sizeof(uint8_t)) == E_FAIL){
-        return E_FAIL;
-    }
-    *((uint8_t * )((*msg)->payload)) = temp_8b;
-
-    return E_SUCCESS;
+   // Origination Time (OT)
+   if (msg->orgination_time_flag == 1){	
+      ieee154e_getAsn(asn_array);
+      
+      asn_len = iphc_getAsnLen(asn_array);
+      
+      packetfunctions_reserveHeaderSize(msg,asn_len);
+      memcpy(&msg->payload[0],&asn_array,asn_len*sizeof(uint8_t));
+      temp_len += asn_len;
+      
+      //set OTL flag value
+      curr_deadline_option.org_otl = asn_len-1;   		
+   } else {
+      //set OTL flag value
+      curr_deadline_option.org_otl = 0;
+   } 
+   
+   // Expiration Time (ET)
+   ieee154e_calculateExpTime(msg->max_delay,asn_array);    
+   asn_len = iphc_getAsnLen(asn_array);
+   packetfunctions_reserveHeaderSize(msg,asn_len);
+   memcpy(&msg->payload[0],&asn_array,asn_len*sizeof(uint8_t));
+   temp_len += asn_len;
+   
+   // 4th byte
+   // TU(2bytes) | EXP(3bytes) | RSV(3bytes)
+   curr_deadline_option.time_unit = 2 ; // in ASN
+   curr_deadline_option.exponent = 0; // Time in ASN
+   curr_deadline_option.rsv = 0; // Reserved
+   temp_8b = (curr_deadline_option.time_unit << 6) | (curr_deadline_option.exponent << 3) | curr_deadline_option.rsv;
+   packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
+   *((uint8_t*)(msg->payload)) = temp_8b;
+   temp_len ++;
+   
+   // 3rd byte
+   // O_FLAG(1byte) | D_FLAG(1byte) | ETL(3bytes) | OTL(3bytes)   
+   curr_deadline_option.exp_etl = asn_len-1;
+   
+   curr_deadline_option.o_flag = msg->orgination_time_flag;
+   curr_deadline_option.d_flag = msg->drop_flag;   
+   
+   temp_8b = (msg->orgination_time_flag << 7) | (msg->drop_flag << 6) | (curr_deadline_option.exp_etl << 3) | (curr_deadline_option.org_otl);
+   packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
+   *((uint8_t*)(msg->payload)) = temp_8b;
+   temp_len ++;   
+   
+   // 2nd byte : Elective Header Type : DEADLINE
+   packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
+   *((uint8_t*)(msg->payload)) = DEADLINE_6LOTH_TYPE;
+   temp_len ++;
+   
+   // 1st byte : 6LoRH Type: ELECTIVE  
+   temp_8b = ELECTIVE_6LoRH | temp_len; 
+   packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
+   *((uint8_t*)(msg->payload)) = temp_8b;
 }
-
 #endif
 
 /**
@@ -1172,7 +1218,10 @@ owerror_t iphc_prependIPv6DeadlineHeader(OpenQueueEntry_t **msg) {
 \param[out]    rpl_option Pointer to the structure to hold the retrieved RPL option.
 \returns       the header length in bytes.
 */
-uint8_t iphc_retrieveIPv6HopByHopHeader(OpenQueueEntry_t *msg, rpl_option_ht *rpl_option) {
+uint8_t iphc_retrieveIPv6HopByHopHeader(
+        OpenQueueEntry_t *msg,
+        rpl_option_ht *rpl_option
+) {
     uint8_t temp_8b;
     uint8_t type;
     uint8_t length;
@@ -1210,12 +1259,17 @@ uint8_t iphc_retrieveIPv6HopByHopHeader(OpenQueueEntry_t *msg, rpl_option_ht *rp
             length += sizeof(uint8_t);
         }
     } else {
-        LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 14, (errorparameter_t) type);
+        openserial_printError(
+                COMPONENT_IPHC,
+                ERR_6LOWPAN_UNSUPPORTED,
+                (errorparameter_t) 14,
+                (errorparameter_t) type
+        );
     }
     return length;
 }
 
-#if DEADLINE_OPTION
+#ifdef DEADLINE_OPTION_ENABLED
 /**
 \brief Retrieve a Deadline hop-by-hop header from a message.
 
@@ -1224,86 +1278,95 @@ uint8_t iphc_retrieveIPv6HopByHopHeader(OpenQueueEntry_t *msg, rpl_option_ht *rp
 \param[out] deadline_option   Pointer to the structure to hold the retrieved Deadline option 
 */
 void iphc_retrieveIPv6DeadlineHeader(
-        OpenQueueEntry_t *msg,
-        uint8_t *deadline_msg_ptr,
-        deadline_option_ht *deadline_option
-) {
-    uint8_t temp_8b, type, i, length = 0;
-    asn_t exp_asn, my_asn;
-    uint8_t my_asn_array[5];
+      OpenQueueEntry_t*      msg,
+      uint8_t*    deadline_msg_ptr,
+      deadline_option_ht*     deadline_option
+   ){
+   uint8_t temp_8b, type, i, length = 0;
+   asn_t exp_asn, my_asn;
+   uint8_t my_asn_array[5];   	 
 
-    temp_8b = *((uint8_t *) deadline_msg_ptr);
-    length++;
-    type = *((uint8_t * )(deadline_msg_ptr) + length);
+   temp_8b = *((uint8_t*)deadline_msg_ptr);
+     length ++;
+   type    = *((uint8_t*)(deadline_msg_ptr)+length);
 
-    if (
-            (temp_8b & FORMAT_6LORH_MASK) == ELECTIVE_6LoRH &&
-            type == DEADLINE_6LOTH_TYPE
-            ) {
+   if (
+       (temp_8b & FORMAT_6LORH_MASK) == ELECTIVE_6LoRH &&
+       type == DEADLINE_6LOTH_TYPE
+   ){
 
-        // 3rd byte
-        length++;
-        temp_8b = *((uint8_t * )(deadline_msg_ptr) + length);
+       // 3rd byte
+       length ++;
+       temp_8b = *((uint8_t*)(deadline_msg_ptr)+length);
 
-        deadline_option->o_flag = (temp_8b >> 7);
-        deadline_option->d_flag = (temp_8b >> 6);
-        deadline_option->exp_etl = (temp_8b >> 3);
-        deadline_option->org_otl = (temp_8b);
+       deadline_option->o_flag  	= (temp_8b >> 7);
+       deadline_option->d_flag  	= (temp_8b >> 6);
+       deadline_option->exp_etl 	= (temp_8b >> 3);
+       deadline_option->org_otl  	= (temp_8b);
 
-        // 4th byte
-        length++;
-        temp_8b = *((uint8_t * )(deadline_msg_ptr) + length);
-        deadline_option->time_unit = (temp_8b >> 6);
-        deadline_option->exponent = (temp_8b >> 3);
+       // 4th byte
+       length ++;
+       temp_8b = *((uint8_t*)(deadline_msg_ptr)+length);
+       deadline_option->time_unit  	= (temp_8b >> 6);
+       deadline_option->exponent 	= (temp_8b >> 3);
 
-        // Expiration Time
-        length++;
-        for (i = 0; i <= deadline_option->exp_etl; i++) {
-            deadline_option->et_val[i] = *((uint8_t * )(deadline_msg_ptr) + length);
-            length++;
-        }
-        ieee154e_orderToASNStructure(deadline_option->et_val, &exp_asn);
+       // Expiration Time
+       length ++;
+       for( i=0; i<=deadline_option->exp_etl; i++) {
+         deadline_option->et_val[i] = *((uint8_t*)(deadline_msg_ptr)+length);
+         length ++;
+       }
+       ieee154e_orderToASNStructure(deadline_option->et_val, &exp_asn);
 
-        // Calculate delay experienced by packet
-        ieee154e_getAsn(my_asn_array);
-        ieee154e_orderToASNStructure(my_asn_array, &my_asn);
-        deadline_option->time_left = ieee154e_computeAsnDiff(&exp_asn, &my_asn);
-        if (deadline_option->time_left < 0) {
-            deadline_option->time_left = 0;
-            LOG_ERROR(COMPONENT_IPHC, ERR_6LORH_DEADLINE_EXPIRED, (errorparameter_t) 0, (errorparameter_t) 0);
-        }
-        monitor_expiration_vars.time_left = deadline_option->time_left;
+       // Calculate delay experienced by packet
+       ieee154e_getAsn(my_asn_array);
+       ieee154e_orderToASNStructure(my_asn_array, &my_asn);
+       deadline_option->time_left = ieee154e_computeAsnDiff(&exp_asn, &my_asn);
+       if (deadline_option->time_left < 0) {
+          deadline_option->time_left = 0;
+          openserial_printError(
+                            COMPONENT_IPHC,
+                                ERR_6LORH_DEADLINE_EXPIRED,
+                                (errorparameter_t)0,
+                                (errorparameter_t)0
+                        );
+       }
+       monitor_expiration_vars.time_left = deadline_option->time_left;
 
-        // Origination Time
-        if (deadline_option->o_flag) {
-            for (i = 0; i <= deadline_option->org_otl; i++) {
-                deadline_option->ot_val[i] = *((uint8_t * )(deadline_msg_ptr) + length);
-                length++;
-            }
-            ieee154e_orderToASNStructure(deadline_option->ot_val, &my_asn);
-            monitor_expiration_vars.time_elapsed = ieee154e_asnDiff(&my_asn);
-        }
+       // Origination Time
+       if(deadline_option->o_flag){
+           for( i=0; i<=deadline_option->org_otl; i++) {
+              deadline_option->ot_val[i] = *((uint8_t*)(deadline_msg_ptr)+length);
+              length ++;
+           }
+           ieee154e_orderToASNStructure(deadline_option->ot_val, &my_asn);
+           monitor_expiration_vars.time_elapsed = ieee154e_asnDiff( &my_asn);
+       }
 
-    } else {
-        LOG_ERROR(COMPONENT_IPHC, ERR_6LOWPAN_UNSUPPORTED, (errorparameter_t) 14, (errorparameter_t) type);
-    }
+   } else {
+       openserial_printError(
+          COMPONENT_IPHC,
+          ERR_6LOWPAN_UNSUPPORTED,
+          (errorparameter_t)14,
+          (errorparameter_t)type
+       );
+   }
 }
 
 // To send deadline hop-by-hop info to upper layers
-void iphc_getDeadlineInfo(monitor_expiration_vars_t *stats) {
-    stats->time_left = monitor_expiration_vars.time_left;
-    stats->time_elapsed = monitor_expiration_vars.time_elapsed;
-    memset(&(monitor_expiration_vars), 0, sizeof(monitor_expiration_vars_t));
+void iphc_getDeadlineInfo(monitor_expiration_vars_t*	stats) {
+   stats->time_left = monitor_expiration_vars.time_left;
+   stats->time_elapsed = monitor_expiration_vars.time_elapsed;
+   memset(&(monitor_expiration_vars),0,sizeof(monitor_expiration_vars_t));
 }
 
-uint8_t iphc_getAsnLen(uint8_t *asn) {
-    uint8_t i;
-    for (i = 5; i >= 1; i--) {
-        if (asn[i - 1] != 0) {
-            return (i);
-        }
-    }
-    return 5;
+uint8_t iphc_getAsnLen(uint8_t* asn) {
+   uint8_t i;
+   for(i=5; i>=1; i--) {
+       if(asn[i-1] != 0) {
+          return (i);
+       }
+   }
+   return 5;
 }
-
 #endif

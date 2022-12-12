@@ -1,4 +1,3 @@
-#include "config.h"
 #include "opendefs.h"
 #include "topology.h"
 #include "idmanager.h"
@@ -52,7 +51,7 @@ topology.
 \return FALSE if the packet should be silently dropped.
 */
 bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
-#if OPENWSN_FORCETOPOLOGY_C
+#ifdef FORCETOPOLOGY
    bool returnVal;
    
    returnVal=FALSE;
@@ -99,7 +98,7 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
    return returnVal;
 #else
    return TRUE;
-#endif /* OPENWSN_FORCETOPOLOGY_C */
+#endif
 }
 
 //=========================== private =========================================

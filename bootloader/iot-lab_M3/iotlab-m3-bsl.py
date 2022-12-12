@@ -6,7 +6,8 @@ from subprocess import call
 
 currentDir = os.path.dirname(os.path.realpath(__file__))
 
-OOCD_CONFIG=os.path.join(currentDir, 'iotlab-m3.cfg')
+OOCD_TARGET='stm32f1x'
+OOCD_ITF=os.path.join(currentDir, 'iotlab-m3.cfg')
 
 OOCD_PORT = '123'
 GDB_PORT = '3' + OOCD_PORT
@@ -81,7 +82,8 @@ if os.name=='nt':
    binary = '{' + binary + '}'
 
 call([OPENOCD,
-   '-f', os.path.join(currentDir, OOCD_CONFIG),
+   '-f', os.path.join(currentDir, OOCD_ITF),
+   '-f', os.path.join('target', OOCD_TARGET) + '.cfg',
    '-c', 'gdb_port ' + GDB_PORT,
    '-c', 'telnet_port ' + TELNET_PORT,
    '-c', 'tcl_port ' + TCL_PORT,

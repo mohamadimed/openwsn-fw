@@ -1,5 +1,5 @@
-#ifndef OPENWSN_OPENBRIDGE_H
-#define OPENWSN_OPENBRIDGE_H
+#ifndef __OPENBRIDGE_H
+#define __OPENBRIDGE_H
 
 /**
 \addtogroup LoWPAN
@@ -29,4 +29,4 @@ void openbridge_receive(OpenQueueEntry_t *msg);
 \}
 */
 
-#endif /* OPENWSN_OPENBRIDGE_H */
+#endif

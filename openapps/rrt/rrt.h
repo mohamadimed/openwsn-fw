@@ -8,9 +8,8 @@
 \{
 */
 
-#include "config.h"
 #include "opendefs.h"
-#include "coap.h"
+#include "opencoap.h"
 #include "schedule.h"
 
 //=========================== define ==========================================
@@ -20,8 +19,8 @@
 //=========================== variables =======================================
 
 typedef struct {
-    coap_resource_desc_t desc;
-    uint8_t discovered;
+	coap_resource_desc_t desc;
+	uint8_t discovered;
 } rrt_vars_t;
 
 //=========================== prototypes ======================================
@@ -29,8 +28,7 @@ typedef struct {
 void rrt_init(void);
 
 void rrt_sendCoAPMsg(char actionMsg, uint8_t *ipv6mote);
-
-void rrt_sendDone(OpenQueueEntry_t *msg, owerror_t error);
+void rrt_sendDone(OpenQueueEntry_t* msg, owerror_t error);
 /**
 \}
 \}

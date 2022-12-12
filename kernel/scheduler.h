@@ -1,5 +1,5 @@
-#ifndef OPENWSN_SCHEDULER_H
-#define OPENWSN_SCHEDULER_H
+#ifndef __SCHEDULER_H
+#define __SCHEDULER_H
 
 /**
 \addtogroup kernel
@@ -41,8 +41,25 @@ typedef enum {
 
 typedef void (*task_cbt)(void);
 
+typedef struct task_llist_t {
+   task_cbt                       cb;
+   task_prio_t                    prio;
+   void*                          next;
+} taskList_item_t;
+
 //=========================== module variables ================================
 
+typedef struct {
+   taskList_item_t                taskBuf[TASK_LIST_DEPTH];
+   taskList_item_t*               task_list;
+   uint8_t                        numTasksCur;
+   uint8_t                        numTasksMax;
+} scheduler_vars_t;
+
+typedef struct {
+   uint8_t                        numTasksCur;
+   uint8_t                        numTasksMax;
+} scheduler_dbg_t;
 
 //=========================== prototypes ======================================
 
@@ -50,16 +67,9 @@ void scheduler_init(void);
 void scheduler_start(void);
 void scheduler_push_task(task_cbt task_cb, task_prio_t prio);
 
-#if SCHEDULER_DEBUG_ENABLE
-uint8_t scheduler_debug_get_TasksCur(void);
-uint8_t scheduler_debug_get_TasksMax(void);
-#endif
-
-#include "openos/scheduler_types.h"
-
 /**
 \}
 \}
 */
 
-#endif /* OPENWSN_SCHEDULER_H */
+#endif

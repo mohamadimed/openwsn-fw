@@ -4,8 +4,8 @@
 \author Thomas Watteyne <watteyne@eecs.berkeley.edu>, October 2014.
 */
 
-#ifndef OPENWSN_OPENSTACK_H
-#define OPENWSN_OPENSTACK_H
+#ifndef __OPENSTACK_H
+#define __OPENSTACK_H
 
 #include "opendefs.h"
 
@@ -19,4 +19,4 @@
 
 void openstack_init(void);
 
-#endif /* OPENWSN_OPENSTACK_H */
+#endif

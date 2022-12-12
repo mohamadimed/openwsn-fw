@@ -3,10 +3,6 @@
     \author Frank Senf <frank.senf@imms.de>, July 2018.
 */
 
-#include "config.h"
-
-#if BOARD_SENSORS_ENABLED
-
 #include "adc_sensor.h"
 #include "sensors.h"
 
@@ -27,7 +23,7 @@ sensors_vars_t sensors_vars;
    \brief Initialize sensors on the board
 */
 void sensors_init(void) {
-    memset(&sensors_vars, 0, sizeof(sensors_vars_t));
+   memset(&sensors_vars,0,sizeof(sensors_vars_t));
 
     if (adc_sens_init()) {
         sensors_vars.sensorsTypes[SENSOR_ADCBATTERY] = 1;
@@ -93,5 +89,3 @@ callbackConvert_cbt sensors_getCallbackConvert(uint8_t sensorType) {
 }
 
 //=========================== private =========================================
-
-#endif /* BOARD_SENSORS_ENABLED */

@@ -52,7 +52,7 @@ static PyObject* OpenMote_getState(OpenMote* self) {
    PyObject* sctimer_icb_compare_cb;
    PyObject* icmpv6echo_vars;
    PyObject* icmpv6rpl_vars;
-   PyObject* coap_vars;
+   PyObject* opencoap_vars;
    PyObject* monitor_expiration_vars;
    PyObject* frag_vars;
    PyObject* neighbors_vars;
@@ -69,9 +69,7 @@ static PyObject* OpenMote_getState(OpenMote* self) {
    PyObject* random_vars;
    PyObject* openserial_vars;
    PyObject* scheduler_vars;
-#if SCHEDULER_DEBUG_ENABLE
    PyObject* scheduler_dbg;
-#endif
    
    returnVal = PyDict_New();
    
@@ -97,10 +95,10 @@ static PyObject* OpenMote_getState(OpenMote* self) {
    // TODO
    PyDict_SetItemString(returnVal, "icmpv6rpl_vars", icmpv6rpl_vars);
    
-   // coap_vars
-   coap_vars = PyDict_New();
+   // opencoap_vars
+   opencoap_vars = PyDict_New();
    // TODO
-   PyDict_SetItemString(returnVal, "coap_vars", coap_vars);
+   PyDict_SetItemString(returnVal, "opencoap_vars", opencoap_vars);
    
    // frag_vars
    frag_vars = PyDict_New();
@@ -183,11 +181,10 @@ static PyObject* OpenMote_getState(OpenMote* self) {
    PyDict_SetItemString(returnVal, "scheduler_vars", scheduler_vars);
    
    // scheduler_dbg
-#if SCHEDULER_DEBUG_ENABLE
    scheduler_dbg = PyDict_New();
    // TODO
    PyDict_SetItemString(returnVal, "scheduler_dbg", scheduler_dbg);
-#endif
+   
    return returnVal;
 }
 

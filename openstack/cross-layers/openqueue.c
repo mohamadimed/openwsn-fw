@@ -1,12 +1,12 @@
-#include "config.h"
 #include "opendefs.h"
 #include "openqueue.h"
 #include "openserial.h"
 #include "packetfunctions.h"
 #include "IEEE802154E.h"
-#include "radio.h"
 #include "IEEE802154_security.h"
 #include "sixtop.h"
+// telosb need debugpins to indicate ISR activity
+#include "debugpins.h"
 
 //=========================== defination =====================================
 
@@ -15,14 +15,17 @@
 //=========================== variables =======================================
 
 openqueue_vars_t openqueue_vars;
+openqueue_stats_t openqueue_stats;
 
 //=========================== prototypes ======================================
 
 void openqueue_reset_entry(OpenQueueEntry_t *entry);
 
-#if OPENWSN_6LO_FRAGMENTATION_C
 void openqueue_reset_big_entry(OpenQueueBigEntry_t *entry);
-#endif
+
+void openqueue_update_stats(void);
+
+uint8_t  openqueue_getBusyPacketBufferSize(void);
 
 //=========================== public ==========================================
 
@@ -31,17 +34,17 @@ void openqueue_reset_big_entry(OpenQueueBigEntry_t *entry);
 /**
 \brief Initialize this module.
 */
-void openqueue_init() {
+void openqueue_init(void) {
     uint8_t i;
     for (i = 0; i < QUEUELENGTH; i++) {
         openqueue_reset_entry(&(openqueue_vars.queue[i]));
     }
 
-#if OPENWSN_6LO_FRAGMENTATION_C
     for (i = 0; i < BIGQUEUELENGTH; i++) {
         openqueue_reset_big_entry(&(openqueue_vars.big_queue[i]));
     }
-#endif
+    
+    openqueue_reset_stats();
 }
 
 /**
@@ -52,14 +55,26 @@ status information about several modules in the OpenWSN stack.
 
 \returns TRUE if this function printed something, FALSE otherwise.
 */
-bool debugPrint_queue() {
-    debugOpenQueueEntry_t output[QUEUELENGTH];
+bool debugPrint_queue(void) {
+      //poipoi: just printing 10 now because of the strange way this is parsed at OV puts a constraint on the variable size.
+    // later should paerhaps improve on this. or restore back by removing the addr and radio setting.
+//    debugOpenQueueEntry_t output[QUEUELENGTH];
+    debugOpenQueueEntry_t output[10];
     uint8_t i;
-    for (i = 0; i < QUEUELENGTH; i++) {
+    //for (i = 0; i < QUEUELENGTH; i++) {
+
+    for (i = 0; i < 10; i++) {
         output[i].creator = openqueue_vars.queue[i].creator;
         output[i].owner = openqueue_vars.queue[i].owner;
+        output[i].l2_cellRadioSetting = openqueue_vars.queue[i].l2_cellRadioSetting;
+        memcpy(
+      &output[i].l2_nextORpreviousHop,
+      &openqueue_vars.queue[i].l2_nextORpreviousHop,
+      sizeof(open_addr_t)
+   );
     }
-    openserial_printStatus(STATUS_QUEUE, (uint8_t * ) & output, QUEUELENGTH * sizeof(debugOpenQueueEntry_t));
+    //openserial_printStatus(STATUS_QUEUE, (uint8_t * ) & output, QUEUELENGTH * sizeof(debugOpenQueueEntry_t));
+    openserial_printStatus(STATUS_QUEUE, (uint8_t * ) & output, 10 * sizeof(debugOpenQueueEntry_t));
     return TRUE;
 }
 
@@ -101,6 +116,7 @@ OpenQueueEntry_t* openqueue_getFreePacketBuffer(uint8_t creator) {
         if (openqueue_vars.queue[i].owner == COMPONENT_NULL) {
             openqueue_vars.queue[i].creator = creator;
             openqueue_vars.queue[i].owner = COMPONENT_OPENQUEUE;
+            openqueue_update_stats();
             ENABLE_INTERRUPTS();
             return &openqueue_vars.queue[i];
         }
@@ -109,58 +125,6 @@ OpenQueueEntry_t* openqueue_getFreePacketBuffer(uint8_t creator) {
     return NULL;
 }
 
-/**
-\brief Free a previously-allocated packet buffer.
-
-\param pkt A pointer to the previsouly-allocated packet buffer.
-
-\returns E_SUCCESS when the freeing was succeful.
-\returns E_FAIL when the module could not find the specified packet buffer.
-*/
-owerror_t openqueue_freePacketBuffer(OpenQueueEntry_t *pkt) {
-    uint8_t i;
-
-    INTERRUPT_DECLARATION();
-    DISABLE_INTERRUPTS();
-
-#if OPENWSN_6LO_FRAGMENTATION_C
-    if (pkt->is_big_packet) {
-        for (i = 0; i < BIGQUEUELENGTH; i++) {
-            if ((OpenQueueBigEntry_t *) pkt == &openqueue_vars.big_queue[i]) {
-                if (openqueue_vars.big_queue[i].standard_entry.owner == COMPONENT_NULL) {
-                    // log the error
-                    LOG_CRITICAL(COMPONENT_OPENQUEUE, ERR_FREEING_UNUSED,(errorparameter_t) 0,(errorparameter_t) 0);
-                }
-
-                openqueue_reset_big_entry((OpenQueueBigEntry_t *) pkt);
-                ENABLE_INTERRUPTS();
-                return E_SUCCESS;
-            }
-        }
-    } else {
-#endif
-        for (i = 0; i < QUEUELENGTH; i++) {
-            if (&openqueue_vars.queue[i] == pkt) {
-                if (openqueue_vars.queue[i].owner == COMPONENT_NULL) {
-                    // log the error
-                    LOG_CRITICAL(COMPONENT_OPENQUEUE, ERR_FREEING_UNUSED, (errorparameter_t) 0, (errorparameter_t) 0);
-                }
-                openqueue_reset_entry(&(openqueue_vars.queue[i]));
-                ENABLE_INTERRUPTS();
-                return E_SUCCESS;
-            }
-        }
-#if OPENWSN_6LO_FRAGMENTATION_C
-    }
-#endif
-
-    // log the error
-    LOG_CRITICAL(COMPONENT_OPENQUEUE, ERR_FREEING_ERROR, (errorparameter_t) 0, (errorparameter_t) 0);
-    ENABLE_INTERRUPTS();
-    return E_FAIL;
-}
-
-#if OPENWSN_6LO_FRAGMENTATION_C
 OpenQueueEntry_t* openqueue_getFreeBigPacketBuffer(uint8_t creator) {
     uint8_t i;
 
@@ -179,7 +143,6 @@ OpenQueueEntry_t* openqueue_getFreeBigPacketBuffer(uint8_t creator) {
             openqueue_vars.big_queue[i].standard_entry.creator = creator;
             openqueue_vars.big_queue[i].standard_entry.owner = COMPONENT_OPENQUEUE;
             openqueue_vars.big_queue[i].standard_entry.is_big_packet = TRUE;
-
             ENABLE_INTERRUPTS();
             return &openqueue_vars.big_queue[i].standard_entry;
 
@@ -189,7 +152,63 @@ OpenQueueEntry_t* openqueue_getFreeBigPacketBuffer(uint8_t creator) {
     ENABLE_INTERRUPTS();
     return NULL;
 }
-#endif
+
+
+/**
+\brief Free a previously-allocated packet buffer.
+
+\param pkt A pointer to the previsouly-allocated packet buffer.
+
+\returns E_SUCCESS when the freeing was succeful.
+\returns E_FAIL when the module could not find the specified packet buffer.
+*/
+owerror_t openqueue_freePacketBuffer(OpenQueueEntry_t *pkt) {
+    uint8_t i;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    if (pkt->is_big_packet) {
+        for (i = 0; i < BIGQUEUELENGTH; i++) {
+            if ((OpenQueueBigEntry_t *) pkt == &openqueue_vars.big_queue[i]) {
+                if (openqueue_vars.big_queue[i].standard_entry.owner == COMPONENT_NULL) {
+                    // log the error
+                    openserial_printCritical(COMPONENT_OPENQUEUE, ERR_FREEING_UNUSED,
+                                             (errorparameter_t) 0,
+                                             (errorparameter_t) 0);
+                }
+                openqueue_reset_big_entry((OpenQueueBigEntry_t *) pkt);
+                ENABLE_INTERRUPTS();
+                return E_SUCCESS;
+            }
+        }
+
+    } else {
+        for (i = 0; i < QUEUELENGTH; i++) {
+            if (&openqueue_vars.queue[i] == pkt) {
+                if (openqueue_vars.queue[i].owner == COMPONENT_NULL) {
+                    // log the error
+                    openserial_printCritical(COMPONENT_OPENQUEUE, ERR_FREEING_UNUSED,
+                                             (errorparameter_t) 0,
+                                             (errorparameter_t) 0);
+                }
+                openqueue_reset_entry(&(openqueue_vars.queue[i]));
+                openqueue_update_stats();
+                ENABLE_INTERRUPTS();
+                return E_SUCCESS;
+            }
+        }
+
+    }
+
+    // log the error
+    openserial_printCritical(COMPONENT_OPENQUEUE, ERR_FREEING_ERROR,
+                             (errorparameter_t) 0,
+                             (errorparameter_t) 0);
+    ENABLE_INTERRUPTS();
+    return E_FAIL;
+}
+
 
 /**
 \brief Free all the packet buffers created by a specific module.
@@ -209,20 +228,18 @@ void openqueue_removeAllCreatedBy(uint8_t creator) {
         }
     }
 
-#if OPENWSN_6LO_FRAGMENTATION_C
     for (i = 0; i < BIGQUEUELENGTH; i++) {
         if (openqueue_vars.big_queue[i].standard_entry.creator == creator) {
             openqueue_reset_big_entry(&(openqueue_vars.big_queue[i]));
         }
     }
-#endif
-
+    openqueue_update_stats();
     ENABLE_INTERRUPTS();
 }
 
 //======= called by RES
 
-OpenQueueEntry_t* openqueue_sixtopGetSentPacket() {
+OpenQueueEntry_t* openqueue_sixtopGetSentPacket(void) {
     uint8_t i;
     INTERRUPT_DECLARATION();
     DISABLE_INTERRUPTS();
@@ -234,7 +251,6 @@ OpenQueueEntry_t* openqueue_sixtopGetSentPacket() {
         }
     }
 
-#if OPENWSN_6LO_FRAGMENTATION_C
     for (i = 0; i < BIGQUEUELENGTH; i++) {
         if (((OpenQueueEntry_t*)&openqueue_vars.big_queue[i])->owner == COMPONENT_IEEE802154E_TO_SIXTOP &&
             ((OpenQueueEntry_t*)&openqueue_vars.big_queue[i])->creator != COMPONENT_IEEE802154E) {
@@ -242,13 +258,12 @@ OpenQueueEntry_t* openqueue_sixtopGetSentPacket() {
             return (OpenQueueEntry_t*)&openqueue_vars.big_queue[i];
         }
     }
-#endif
 
     ENABLE_INTERRUPTS();
     return NULL;
 }
 
-OpenQueueEntry_t* openqueue_sixtopGetReceivedPacket() {
+OpenQueueEntry_t* openqueue_sixtopGetReceivedPacket(void) {
     uint8_t i;
     INTERRUPT_DECLARATION();
     DISABLE_INTERRUPTS();
@@ -286,7 +301,7 @@ uint8_t openqueue_getNum6PReq(open_addr_t *neighbor) {
     return num6Prequest;
 }
 
-uint8_t openqueue_getNum6PResp() {
+uint8_t openqueue_getNum6PResp(void) {
 
     uint8_t i;
     uint8_t num6Presponse;
@@ -330,7 +345,7 @@ void openqueue_remove6PrequestToNeighbor(open_addr_t *neighbor) {
 
 //======= called by IEEE80215E
 
-bool openqueue_isHighPriorityEntryEnough() {
+bool openqueue_isHighPriorityEntryEnough(void) {
     uint8_t i;
     uint8_t numberOfEntry;
     INTERRUPT_DECLARATION();
@@ -352,7 +367,7 @@ bool openqueue_isHighPriorityEntryEnough() {
     }
 }
 
-OpenQueueEntry_t* openqueue_macGetEBPacket() {
+OpenQueueEntry_t* openqueue_macGetEBPacket(void) {
    uint8_t i;
    INTERRUPT_DECLARATION();
    DISABLE_INTERRUPTS();
@@ -403,10 +418,11 @@ OpenQueueEntry_t*  openqueue_macGetDIOPacket(){
 }
 
 /**
-\Brief replace the upstream packet nexthop payload by given newNextHop address
+\Brief replace the upstream packet nexthop payload by given newNextHop address and RadioSetting
 \param newNextHop.
+\param newNextHopRadio.
 */
-void openqueue_updateNextHopPayload(open_addr_t *newNextHop) {
+void openqueue_updateNextHopPayload(open_addr_t *newNextHop, cellRadioSetting_t* newNextHopRadio) {
 
     uint8_t i, j;
     INTERRUPT_DECLARATION();
@@ -428,6 +444,7 @@ void openqueue_updateNextHopPayload(open_addr_t *newNextHop) {
                 for (j = 0; j < 8; j++) {
                     *((uint8_t *) openqueue_vars.queue[i].l2_nextHop_payload + j) = newNextHop->addr_64b[j];
                 }
+                openqueue_vars.queue[i].l2_cellRadioSetting = *newNextHopRadio;
             }
         }
     }
@@ -435,23 +452,7 @@ void openqueue_updateNextHopPayload(open_addr_t *newNextHop) {
     ENABLE_INTERRUPTS();
 }
 
-OpenQueueEntry_t*  openqueue_getPacketByComponent(uint8_t component) {
-    uint8_t i;
-    INTERRUPT_DECLARATION();
-    DISABLE_INTERRUPTS();
-
-    for (i = 0; i < QUEUELENGTH; i++) {
-        if (openqueue_vars.queue[i].owner == component) {
-            ENABLE_INTERRUPTS();
-            return &openqueue_vars.queue[i];
-        }
-    }
-
-    ENABLE_INTERRUPTS();
-    return NULL;
-}
-
-OpenQueueEntry_t*  openqueue_macGetUnicastPacket(open_addr_t* toNeighbor){
+OpenQueueEntry_t*  openqueue_macGetUnicastPakcet(open_addr_t* toNeighbor){
     uint8_t i;
     INTERRUPT_DECLARATION();
     DISABLE_INTERRUPTS();
@@ -486,7 +487,6 @@ OpenQueueEntry_t*  openqueue_macGetUnicastPacket(open_addr_t* toNeighbor){
         }
     }
 
-#if OPENWSN_6LO_FRAGMENTATION_C
     for (i = 0; i < BIGQUEUELENGTH; i++) {
         if (
                 ((OpenQueueEntry_t*)&openqueue_vars.big_queue[i])->owner == COMPONENT_SIXTOP_TO_IEEE802154E &&
@@ -499,13 +499,60 @@ OpenQueueEntry_t*  openqueue_macGetUnicastPacket(open_addr_t* toNeighbor){
             return (OpenQueueEntry_t*)&openqueue_vars.big_queue[i];
         }
     }
-#endif
     ENABLE_INTERRUPTS();
     return NULL;
+
+}
+
+openqueue_stats_t openqueue_get_stats(void)
+{
+    return openqueue_stats;
+}
+
+//=========================== private =========================================
+
+/**
+\brief Get the size of the busy packet buffer
+
+This is used at the moment for statistical measurements purposes to see the 
+impact of different configurations on the average buffer size. 
+
+\returns an uint with the number of waiting packets in the buffer
+*/
+uint8_t openqueue_getBusyPacketBufferSize() {
+    uint8_t i;
+    uint8_t busy_buffer_size = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+    // walk through queue and find free entry
+    for (i = 0; i < QUEUELENGTH; i++) {
+        if (openqueue_vars.queue[i].owner != COMPONENT_NULL) {
+            busy_buffer_size++;
+        }
+    }
+    ENABLE_INTERRUPTS();
+    return busy_buffer_size;
 }
 
 
-//=========================== private =========================================
+void openqueue_update_stats(void){
+    // update the stats
+    uint8_t buffSize = openqueue_getBusyPacketBufferSize();
+    if (buffSize>openqueue_stats.maxBuffSize){
+        openqueue_stats.maxBuffSize = buffSize;
+    }
+    
+    if (buffSize< openqueue_stats.minBuffSize){
+        openqueue_stats.minBuffSize=buffSize;
+    }
+    
+}
+void openqueue_reset_stats(void){
+    uint8_t size = openqueue_getBusyPacketBufferSize();
+    openqueue_stats.maxBuffSize=size;
+    openqueue_stats.minBuffSize=size;
+}
 
 void openqueue_reset_entry(OpenQueueEntry_t *entry) {
     //admin
@@ -513,12 +560,10 @@ void openqueue_reset_entry(OpenQueueEntry_t *entry) {
     entry->owner = COMPONENT_NULL;
 
     // Footer is longer if security is used
-    entry->payload = &(entry->packet[IEEE802154_FRAME_SIZE - LENGTH_CRC - IEEE802154_SECURITY_TAG_LEN]);
+    entry->payload = &(entry->packet[IEEE802154_FRAME_SIZE - IEEE802154_SECURITY_TAG_LEN]);
     entry->length = 0;
     entry->is_cjoin_response = FALSE;
-#if OPENWSN_6LO_FRAGMENTATION_C
     entry->is_big_packet = FALSE;
-#endif
     //l4
     entry->l4_protocol = IANA_UNDEFINED;
     entry->l4_protocol_compressed = FALSE;
@@ -526,9 +571,7 @@ void openqueue_reset_entry(OpenQueueEntry_t *entry) {
     entry->l3_destinationAdd.type = ADDR_NONE;
     entry->l3_sourceAdd.type = ADDR_NONE;
     entry->l3_useSourceRouting = FALSE;
-#if OPENWSN_6LO_FRAGMENTATION_C
     entry->l3_isFragment = FALSE;
-#endif
     //l2
     entry->l2_sixtop_command = IANA_6TOP_CMD_NONE;
     entry->l2_nextORpreviousHop.type = ADDR_NONE;
@@ -542,11 +585,10 @@ void openqueue_reset_entry(OpenQueueEntry_t *entry) {
     entry->l2_securityLevel = 0;
 }
 
-#if OPENWSN_6LO_FRAGMENTATION_C
+
 void openqueue_reset_big_entry(OpenQueueBigEntry_t *entry) {
     openqueue_reset_entry(&(entry->standard_entry));
 
-    // reset pointer to the end op the extended buffer
+    // make pointer point to the end op the extended buffer
     entry->standard_entry.payload = &(entry->standard_entry.packet[IPV6_PACKET_SIZE]);
 }
-#endif

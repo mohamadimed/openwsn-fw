@@ -8,6 +8,7 @@ at most MAX_NUM_TIMERS timers.
  */
 
 #include "opendefs.h"
+#include "board.h"   
 #include "opentimers.h"
 // some dsp modules are required
 #include "sctimer.h"
@@ -60,7 +61,6 @@ opentimers_id_t opentimers_create(uint8_t timer_id, uint8_t task_prio){
             opentimers_vars.timersBuf[timer_id].isUsed   = TRUE;
             // the TSCH timer and inhibit timer won't push a task,
             // hence task_prio is not used
-            ENABLE_INTERRUPTS();
             return timer_id;
         }
     }
@@ -70,7 +70,6 @@ opentimers_id_t opentimers_create(uint8_t timer_id, uint8_t task_prio){
             if (opentimers_vars.timersBuf[id].isUsed  == FALSE){
                 opentimers_vars.timersBuf[id].isUsed   = TRUE;
                 opentimers_vars.timersBuf[id].timer_task_prio = task_prio;
-                ENABLE_INTERRUPTS();
                 return id;
             }
         }

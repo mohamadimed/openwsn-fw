@@ -5,8 +5,8 @@
 \author Timothy Claeys <timothy.claeys@inria.fr>, January 2020.
 */
 
-#ifndef OPENWSN_FRAG_H
-#define OPENWSN_FRAG_H
+#ifndef __FRAG_H
+#define __FRAG_H
 
 /**
 \addtogroup LoWPAN
@@ -15,7 +15,6 @@
 \{
 */
 
-#include "config.h"
 
 #include "opendefs.h"
 #include "openqueue.h"
@@ -28,7 +27,7 @@
  * If L2 security is not active MAX_FRAGMENT_SIZE can be set to 96 bytes, but the corresponding variable in
  * openvisualizer must then also be updated to the same value.
  */
-#define MAX_FRAGMENT_SIZE           80
+#define MAX_FRAGMENT_SIZE           96
 
 #define FRAGMENT_BUFFER_SIZE        (((IPV6_PACKET_SIZE / MAX_FRAGMENT_SIZE) + 1) * BIGQUEUELENGTH)
 #define NUM_OF_VRBS                 2
@@ -114,4 +113,4 @@ void frag_receive(OpenQueueEntry_t *msg);
 
 owerror_t frag_fragment6LoPacket(OpenQueueEntry_t *msg);
 
-#endif /* OPENWSN_FRAG_H */
+#endif
