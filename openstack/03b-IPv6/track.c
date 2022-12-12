@@ -18,8 +18,9 @@ track_vars_t track_vars;
 bool track_getTrackExistenceByID(uint8_t trackID);
 bool track_getSubTrackExistenceByID(uint8_t TrackID, uint8_t subTrackID);
 bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1);
-bool track_reserveTrackCells(uint8_t trackID, uint8_t subTrackID);
-void track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID);
+bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
+void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
+open_addr_t track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
 bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID);
 
 //=========================== public ==========================================
@@ -75,9 +76,28 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
       //Feed track vars from the received packet
       
       uint8_t trackID, subTrackID;
+      uint8_t bundle_length, parent_radio;
+      uint8_t parent_addr_byte0, parent_addr_byte1;
+      uint8_t ingress_addr_byte0, ingress_addr_byte1;
+      open_addr_t parent;
+      
+      /*read packet payload*/
 
-      trackID = msg->payload[0];
-      subTrackID = msg->payload[1];
+      trackID               = msg->payload[0];
+      subTrackID            = msg->payload[1];
+      ingress_addr_byte0    = msg->payload[2];
+      ingress_addr_byte1    = msg->payload[3];
+      bundle_length         = msg->payload[6];
+      parent_addr_byte0     = msg->payload[7];
+      parent_addr_byte1     = msg->payload[8];
+      parent_radio          = msg->payload[9];
+
+
+      //fill parent address with first 48 bytes
+       parent=track_getParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
+
+
+
       //Get track ID to check if we already created this Track, it may be an update or a adding another subTruck
 
       if(!track_getTrackExistenceByID(trackID)){ //this is the first track we gonna add
@@ -86,12 +106,9 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
             return 0;
 
          //we are not out of rang of MAX_NUM TRACKS
-            
-
-
-
+               if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length))
                
-
+               {
                   //Track defined by trackId,subTrackID exists so proceed to suppression
                track_vars.nb_tracks++;
                track_vars.track_list[trackID].track_id = trackID;
@@ -100,23 +117,21 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                //get SubTrack info
                track_vars.track_list[trackID].num_subtracks++;
                track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = subTrackID;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = msg->payload[6];
+               track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = bundle_length;
                //Check and get if we are Ingress point
                if (idmanager_getIsDAGroot()) 
                track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = TRUE;
                //Check and get if we are Egress point 
-               if(track_getIfIamIngress(msg->payload[2],msg->payload[3]))
+               if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))
                track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
                         
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[0] = msg->payload[7];
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[1] = msg->payload[8]; 
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) msg->payload[9];
-               //fill parent address with first 48 bytes
-               track_getParentEui64from16(trackID,subTrackID);
-               //proceed to cell reservation
-               if (track_reserveTrackCells(trackID,subTrackID))
+               track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
+               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio;
+
                return 1; 
-               else {return 0;}//HERE SHOULD IMPLEMENT the free regestraion}
+               
+               }
+               else {return 0;}
          }
 
        else {
@@ -127,57 +142,50 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                      return 0;
                
                    //we are not out of rang of MAX_NUM TRACKS
-                        
-   
-                                                                                    /*THIS SHOUD CHANGE, its just and exmpl*/
-
-                        
+                           
+                        if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) 
+                        {                      
                         //get SubTrack info
                         track_vars.track_list[trackID].num_subtracks++;
                         track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = subTrackID;
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = msg->payload[6];
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = bundle_length;
                         //Check and get if we are Ingress point
                         if (idmanager_getIsDAGroot()) 
                         track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = TRUE;
                         //Check and get if we are Egress point 
-                        if(track_getIfIamIngress(msg->payload[2],msg->payload[3]))
+                        if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))
                         track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
                         
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[0] = msg->payload[7];
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[1] = msg->payload[8]; 
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) msg->payload[9];
-                        //fill parent address with first 48 bytes
-                        track_getParentEui64from16(trackID,subTrackID);
-                        //proceed to cell reservation
-                        if (track_reserveTrackCells(trackID,subTrackID))                        
+                        track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio;
+                      
                         return 1;
-                        
-                        else return 0;//HERE should implement free regetions if reservation do not work
+                        }
+                        else return 0;
                } else {
                         //update sub track if it already exists                  /*TBD*/
+
+                        if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) 
+                        {
                         //get SubTrack info
                         track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = subTrackID;
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = msg->payload[6];
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = bundle_length;
                         //Check and get if we are Ingress point
                         if (idmanager_getIsDAGroot()) 
                         track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = TRUE;
                         //Check and get if we are Egress point 
-                        if(track_getIfIamIngress(msg->payload[2],msg->payload[3]))//Define condition for Egress later/*TBD*/
+                        if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))//Define condition for Egress later/*TBD*/
                         track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
                         
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[0] = msg->payload[7];
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[1] = msg->payload[8]; 
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) msg->payload[9]; 
-                        //fill parent address with first 48 bytes
-                        track_getParentEui64from16(trackID,subTrackID);
-                        if (track_reserveTrackCells(trackID,subTrackID))
-                        return 1;
+                        track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio; 
+
+
+                        return 1;}
                         else return 0; //TBD
                         }
       }
                           
-                
-               
                   }
 
 
@@ -315,21 +323,16 @@ bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1)
   return is_ingress;
 }
 
-bool track_reserveTrackCells(uint8_t trackID, uint8_t subTrackID)
+bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle)
 
 {  bool is_Reserved = FALSE;
    cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
-   open_addr_t           neighbor;
-   cellRadioSetting_t    neighborRadio;
    uint8_t               cellOptions;
-   uint8_t               numCells;
    owerror_t             outcome;
 
-   neighbor      = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr;
-   neighborRadio = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting;
-   numCells      = track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length;
+      /*TBD LOOP using bundle*/
 
-      if (msf_candidateAddCellList(celllist_add,numCells,neighborRadio)==FALSE)
+      if (msf_candidateAddCellList(celllist_add,1,neighborRadio)==FALSE)
             is_Reserved = FALSE;
                      
       else  {
@@ -339,7 +342,7 @@ bool track_reserveTrackCells(uint8_t trackID, uint8_t subTrackID)
             outcome = sixtop_request(
             IANA_6TOP_CMD_ADD,                  // code
             &neighbor,                          // neighbor
-            numCells,                                  // number cells
+            1,//numCells                          // number cells
             cellOptions,                     // cellOptions
             celllist_add,                       // celllist to add
             NULL,                               // celllist to delete (not used)
@@ -362,14 +365,16 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
    open_addr_t           neighbor;
    cellRadioSetting_t    neighborRadio;
    uint8_t               cellOptions;
-   uint8_t               numCells;
+   uint8_t               bundle;
    owerror_t             outcome;
 
    neighbor      = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr;
    neighborRadio = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting;
-   numCells      = track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length;
+   bundle      = track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length;
 
-      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,numCells, CELLTYPE_TX)==FALSE)
+   /*TBD bundle loop*/
+
+      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,1, CELLTYPE_TX)==FALSE)
             is_Deleted = FALSE;
                      
       else  {
@@ -379,7 +384,7 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
             outcome = sixtop_request(
             IANA_6TOP_CMD_DELETE,                  // code
             &neighbor,                          // neighbor
-            numCells,                                  // number cells
+            1, //numCells,                                  // number cells
             cellOptions,                     // cellOptions
             NULL,                       // celllist to add
             celllist_delete,                               // celllist to delete (not used)
@@ -395,11 +400,11 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
    return is_Deleted;
 }
 
-
-void track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID)
+/*We use this function to generate the EUI-64 address of a given node based on its EUI-16, this is for shorten the sent packets size since now we lean on CoAP to install tracks*/
+void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte0, uint8_t byte1)
 {  track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.type = ADDR_64B;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[6] = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[0];
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[7] = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_16b[1];
+   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[6] = byte0;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[7] = byte1;
    track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[0] = 0x00;
    track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[1] = 0x12;
    track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[2] = 0x4b;
@@ -409,6 +414,24 @@ void track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID)
 
 
 }
+
+open_addr_t track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1)
+
+{  open_addr_t neighbor;
+   neighbor.type = ADDR_64B;
+   neighbor.addr_64b[6] = byte0;
+   neighbor.addr_64b[7] = byte1;
+   neighbor.addr_64b[0] = 0x00;
+   neighbor.addr_64b[1] = 0x12;
+   neighbor.addr_64b[2] = 0x4b;
+   neighbor.addr_64b[3] = 0x00;
+   neighbor.addr_64b[4] = 0x14;
+   neighbor.addr_64b[5] = 0xb5;
+
+   return neighbor;
+
+}
+
 
 /*
     Payload format for Track creation. This packet should be created by 
