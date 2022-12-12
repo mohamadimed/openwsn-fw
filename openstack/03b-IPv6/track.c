@@ -327,22 +327,25 @@ bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t
 
 {  bool is_Reserved = FALSE;
    cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
-   uint8_t               cellOptions;
+   uint8_t               cellOptions,i;
    owerror_t             outcome;
 
       /*TBD LOOP using bundle*/
 
-      if (msf_candidateAddCellList(celllist_add,1,neighborRadio)==FALSE)
+      if (msf_candidateAddCellList(celllist_add,bundle,neighborRadio)==FALSE)
             is_Reserved = FALSE;
                      
       else  {
             cellOptions = CELLOPTIONS_TX;
             cellOptions |= neighborRadio <<5;//0 <<5;//CELLRADIOSETTING_3 <<5;//neighborRadio <<5;
+
+            
+               
                // call sixtop
             outcome = sixtop_request(
             IANA_6TOP_CMD_ADD,                  // code
             &neighbor,                          // neighbor
-            1,//numCells                          // number cells
+            bundle,//numCells                          // number cells
             cellOptions,                     // cellOptions
             celllist_add,                       // celllist to add
             NULL,                               // celllist to delete (not used)
@@ -384,7 +387,7 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
             outcome = sixtop_request(
             IANA_6TOP_CMD_DELETE,                  // code
             &neighbor,                          // neighbor
-            1, //numCells,                                  // number cells
+            bundle, //numCells,                                  // number cells
             cellOptions,                     // cellOptions
             NULL,                       // celllist to add
             celllist_delete,                               // celllist to delete (not used)
