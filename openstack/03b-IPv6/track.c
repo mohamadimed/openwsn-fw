@@ -19,9 +19,11 @@ bool track_getTrackExistenceByID(uint8_t trackID);
 bool track_getSubTrackExistenceByID(uint8_t TrackID, uint8_t subTrackID);
 bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1);
 bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
+bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
+bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID);
 void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
 open_addr_t track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
-bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID);
+
 
 //=========================== public ==========================================
 
@@ -100,13 +102,13 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
 
       //Get track ID to check if we already created this Track, it may be an update or a adding another subTruck
 
-      if(!track_getTrackExistenceByID(trackID)){ //this is the first track we gonna add
+      if(!track_getTrackExistenceByID(trackID)){ //this is the first track we gonna add it and the subtrack also
 
          if((track_vars.nb_tracks >= MAX_NUM_TRACKS) || (trackID > MAX_NUM_TRACKS) || (subTrackID > MAX_NUM_SUBTRACKS)) // don't allow track ID > to max tracks to not overflow table and bug if luanched directly with track for eg3
             return 0;
 
          //we are not out of rang of MAX_NUM TRACKS
-               if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length))
+               if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) 
                
                {
                   //Track defined by trackId,subTrackID exists so proceed to suppression
@@ -134,10 +136,10 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                else {return 0;}
          }
 
-       else {
+       else { 
                //update Track if it already exists [NEED TO REALLOCATE HARD CELLS]   /*TBD*/
                
-               if(!track_getSubTrackExistenceByID(trackID,subTrackID)){
+               if(!track_getSubTrackExistenceByID(trackID,subTrackID)){ // Here the track ID exists , but not the sub track, so add the new subtrack (its an ingress point may have several subtracks)
                   if(track_vars.track_list[trackID].num_subtracks >= MAX_NUM_SUBTRACKS || subTrackID > MAX_NUM_SUBTRACKS)
                      return 0;
                
@@ -163,33 +165,31 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                         }
                         else return 0;
                } else {
-                        //update sub track if it already exists                  /*TBD*/
+                        //update sub track if it already exists       //here we should have the track ID and sub track ID----> an update is needed
+                                           
+                         if(!track_realocateTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) return 0;
+                                 else {
+                                 //get SubTrack info
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = subTrackID;
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = bundle_length;
+                                 //Check and get if we are Ingress point
+                                 if (idmanager_getIsDAGroot()) 
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = TRUE;
+                                 //Check and get if we are Egress point 
+                                 if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))//Define condition for Egress later/*TBD*/
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
+                                 
+                                 track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio; 
+                                 return 1;   }
 
-                        if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) 
-                        {
-                        //get SubTrack info
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = subTrackID;
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = bundle_length;
-                        //Check and get if we are Ingress point
-                        if (idmanager_getIsDAGroot()) 
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = TRUE;
-                        //Check and get if we are Egress point 
-                        if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))//Define condition for Egress later/*TBD*/
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
-                        
-                        track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio; 
-
-
-                        return 1;}
-                        else return 0; //TBD
-                        }
-      }
+                     
                           
                   }
 
+       }
 
-
+}
 owerror_t  track_deleteTrack(OpenQueueEntry_t* msg)
 {
 if (ieee154e_isSynch() == FALSE) {
@@ -230,10 +230,7 @@ if (ieee154e_isSynch() == FALSE) {
                if (track_deleteTrackCells(trackID,subTrackID)){
                
 
-                  //Track defined by trackId,subTrackID exists so proceed to suppression
-               
-               
-
+               //Track defined by trackId,subTrackID exists so proceed to suppression
 
                //get SubTrack info
                track_vars.track_list[trackID].num_subtracks--;
@@ -377,7 +374,7 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
 
    /*TBD bundle loop*/
 
-      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,1, CELLTYPE_TX)==FALSE)
+      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,bundle, CELLTYPE_TX)==FALSE)
             is_Deleted = FALSE;
                      
       else  {
@@ -402,6 +399,58 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
 
    return is_Deleted;
 }
+
+
+
+//#we must assume that the bundle should same when performing an update to ensure correct function, otherwise we must delete the track vars and create it all new
+bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle)
+
+{  bool is_Reserved = FALSE;
+   cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
+   cellInfo_ht           celllist_delete[CELLLIST_MAX_LEN];
+   uint8_t               cellOptions,i;
+   owerror_t             outcome;
+
+      memset(celllist_delete, 0, CELLLIST_MAX_LEN*sizeof(cellInfo_ht));
+      memset(celllist_add, 0, CELLLIST_MAX_LEN*sizeof(cellInfo_ht));
+      
+      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,bundle, CELLTYPE_TX) == FALSE)
+        
+            return is_Reserved;
+            
+      if (msf_candidateAddCellList(celllist_add, bundle, neighborRadio) == FALSE){
+            // failed to get cell list to add
+           return is_Reserved;
+        }
+
+            
+                     
+      else  {
+            cellOptions = CELLOPTIONS_TX;
+            cellOptions |= neighborRadio <<5;//0 <<5;//CELLRADIOSETTING_3 <<5;//neighborRadio <<5;
+
+            
+               
+               // call sixtop
+            outcome = sixtop_request(
+            IANA_6TOP_CMD_RELOCATE,                  // code
+            &neighbor,                          // neighbor
+            bundle,//numCells                          // number cells
+            cellOptions,                     // cellOptions
+            celllist_add,                       // celllist to add
+            celllist_delete,                               // celllist to delete (not used)
+            msf_getsfid(),                      // sfid
+            0,                                  // list command offset (not used)
+            0,                                   // list command maximum celllist (not used)
+            TRUE                                 // isHardCell? Yes, added manually to be used later so dont want to be deleted, consider it as HardCell
+                                       );
+            if(outcome == E_SUCCESS)
+            is_Reserved = TRUE;
+            }
+
+   return is_Reserved;
+}
+
 
 /*We use this function to generate the EUI-64 address of a given node based on its EUI-16, this is for shorten the sent packets size since now we lean on CoAP to install tracks*/
 void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte0, uint8_t byte1)
