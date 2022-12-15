@@ -324,7 +324,7 @@ bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t
 
 {  bool is_Reserved = FALSE;
    cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
-   uint8_t               cellOptions,i;
+   uint8_t               cellOptions;
    owerror_t             outcome;
 
       /*TBD LOOP using bundle*/
@@ -408,7 +408,7 @@ bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8
 {  bool is_Reserved = FALSE;
    cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
    cellInfo_ht           celllist_delete[CELLLIST_MAX_LEN];
-   uint8_t               cellOptions,i;
+   uint8_t               cellOptions;
    owerror_t             outcome;
 
       memset(celllist_delete, 0, CELLLIST_MAX_LEN*sizeof(cellInfo_ht));

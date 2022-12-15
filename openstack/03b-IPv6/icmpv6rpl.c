@@ -207,6 +207,10 @@ void  icmpv6rpl_writeDODAGid(uint8_t* dodagid) {
 }
 
 uint8_t icmpv6rpl_getRPLIntanceID(void) {
+  
+  //if msg->Track ID != 0 then return trackID as rplInstance otherwise return icmpv6rpl_vars.dao.rplinstanceId; 
+  //so this function should be modified to get an argument the msg to send
+  
    return icmpv6rpl_vars.dao.rplinstanceId;
 }
 
@@ -520,8 +524,7 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
                     // same parent, same rank, nothing to report about
                 }
             } else {
-              //Added by mm to delete negociated cell with parent (do not clear cells created through CoAP demands)
-                //scheduler_push_task(msf_timer_clear_task,TASKPRIO_MSF);
+
                 // clear neighbors preferredParent flag
                 neighbors_setPreferredParent(prevParentIndex, FALSE);
                 // set neighbors as preferred parent

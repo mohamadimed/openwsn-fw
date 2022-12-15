@@ -478,7 +478,7 @@ void forwarding_getNextHop(open_addr_t *destination128b, open_addr_t *addressToW
         }
     } else {
         // destination is remote, send to preferred parent
-        icmpv6rpl_getPreferredParentKey(addressToWrite64b,radioSettingToWrite);
+        icmpv6rpl_getPreferredParentKey(addressToWrite64b,radioSettingToWrite); //HERE implement next hop by hop using TRACk if rplInstance == 0 then getprefferedParrent else get parent by rplID(trackID)
     }
 }
 

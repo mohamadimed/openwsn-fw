@@ -1019,7 +1019,7 @@ port_INLINE void activity_ti1ORri1(void) {
     // wiggle debug pins
     debugpins_slot_toggle();
     if (ieee154e_vars.slotOffset==0) {
-      //  debugpins_frame_toggle();
+        debugpins_frame_toggle();
     }
 
     // desynchronize if needed
@@ -1172,6 +1172,10 @@ port_INLINE void activity_ti1ORri1(void) {
             ieee154e_vars.dataToSend = NULL;
             // get the neighbor
             schedule_getNeighbor(&neighbor);
+            
+            /*To be added by mm to select unicast packt neighbor and its radio, to not mix several packets for the same neighbor using different radios*/ 
+            
+            //neighbor_radio = schedule_getCellRadioSetting();
 
             // check whether we can send
             // if non-shared slot, be default OK to send; otherwise, check backoff
@@ -1181,7 +1185,7 @@ port_INLINE void activity_ti1ORri1(void) {
                     // look for a unicast packet to send
                     // you need to ensure that it is getting the packet for the radio as well.
                     // this includes sxitop packets
-                    ieee154e_vars.dataToSend = openqueue_macGetUnicastPakcet(&neighbor);
+                    ieee154e_vars.dataToSend = openqueue_macGetUnicastPakcet(&neighbor); //need to be openqueue_macGetUnicastPakcet(&neighbor,radio);
 
                         if (ieee154e_vars.dataToSend == NULL){
                             ieee154e_vars.dataToSend = openqueue_macGetKaPacket(&neighbor);
