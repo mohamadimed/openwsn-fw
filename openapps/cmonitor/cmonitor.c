@@ -236,7 +236,8 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
    open_addr_t          Neighbor;
    open_addr_t          parentNeighbor;
    bool                 foundNeighbor;
-   dagrank_t             MyDAGRANK;
+   dagrank_t            MyDAGRANK;
+   int8_t               neighbor_rssi;
    
     uint32_t             ticksTx;
     uint32_t             ticksOn;
@@ -314,10 +315,10 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
                 
          packetfunctions_reserveHeaderSize(msg,4*sizeof(uint8_t));   
          foundNeighbor = neighbors_getNeighborKey(&Neighbor,ADDR_64B,&neighbor_radio,neighbor_counter);
-         
+         neighbor_rssi = neighbors_getRssi(neighbor_counter);
          if (foundNeighbor)
           {
-            msg->payload[3] = 55;
+            msg->payload[3] = neighbor_rssi;
             msg->payload[2] = neighbor_radio;
             msg->payload[1] = Neighbor.addr_64b[7];
             msg->payload[0] = Neighbor.addr_64b[6];
