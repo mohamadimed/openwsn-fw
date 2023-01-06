@@ -84,23 +84,23 @@ time.sleep(2)
 
 p = c.PUT('coap://[{0}]/ci'.format(MOTE_IP),True,[],[1,2,0xd3, 0x2f,0xd3, 0x19,2,0xd3, 0x19,1,0])
 """
-                                                                   #d282->d32f OFDM (1)
-p = c.PUT('coap://[{0}]/ci'.format('bbbb:0:0:0:12:4b00:14b5:d282'),True,[],[1,1,0xd2, 0x82,0xd3, 0x19,1,0xd3, 0x2f,2,0])
+                                                                   #d366->d32f OFDM (1)
+p = c.PUT('coap://[{0}]/ci'.format('bbbb:0:0:0:12:4b00:14b5:d366'),True,[],[1,1,0xd3, 0x66,0xd3, 0x19,1,0xd3, 0x2f,2,1])
 print('{0}'.format(p))   
 time.sleep(5)
                                                                         #d32f->d319 OFDM (1)
-p = c.PUT('coap://[{0}]/ci'.format(MOTE_IP),True,[],[1,1,0xd2, 0x82,0xd3, 0x19,1,0xd3, 0x19,2,0])
+# p = c.PUT('coap://[{0}]/ci'.format(MOTE_IP),True,[],[1,1,0xd2, 0x82,0xd3, 0x19,1,0xd3, 0x19,2,0])
+# print('{0}'.format(p))
+# time.sleep(5)
+
+                                                                        #d366->d319 FSK (1)
+p = c.PUT('coap://[{0}]/ci'.format('bbbb:0:0:0:12:4b00:14b5:d366'),True,[],[1,2,0xd3, 0x66,0xd3, 0x19,1,0xd3, 0x19,1,1]) 
 print('{0}'.format(p))
 time.sleep(5)
 
-                                                                        #d282->d319 FSK (1)
-p = c.PUT('coap://[{0}]/ci'.format('bbbb:0:0:0:12:4b00:14b5:d282'),True,[],[1,2,0xd2, 0x82,0xd3, 0x19,1,0xd3, 0x19,1,0]) 
-print('{0}'.format(p))
-time.sleep(5)
 
-
-                                                                        #d34a->d319 QPSK (1)
-p = c.PUT('coap://[{0}]/ci'.format('bbbb:0:0:0:12:4b00:14b5:d34a'),True,[],[1,2,0xd2, 0x82,0xd3, 0x19,2,0xd3, 0x19,0,0]) 
+                                                                        #d32f->d319 QPSK (1)
+p = c.PUT('coap://[{0}]/ci'.format('bbbb:0:0:0:12:4b00:14b5:d32f'),True,[],[1,2,0xd3, 0x66,0xd3, 0x19,1,0xd3, 0x19,0,1]) 
 print('{0}'.format(p))
 
 
