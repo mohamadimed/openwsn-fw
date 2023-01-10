@@ -8,6 +8,7 @@ sys.path.insert(0,os.path.join(here,'..','..','..','coap'))
 from coap import coap
 import struct
 import netmanager
+import time
 
 #---------------------------CLASS AND METHODS DEF-----------------------#
 class Cmonitor():
@@ -205,6 +206,7 @@ for i in range(1,len(monitor.mote_index_map)):
     c = coap.coap(udpPort=UDPPORT)
     p = c.GET('coap://[{0}]/m/nl'.format(MOTE_IP))
     c.close()
+    time.sleep(3)
 
     neighborsCount = p[-1]
     #print "Number of neighbors is :",neighborsCount
@@ -272,23 +274,38 @@ bundle = 1
 
 for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID correctly[must start with 1]
     monitor.list_of_subTracks[t-1].insert(0,selected_ingress_adr)
+    code_to_execute = ''        
+
+    code_to_execute ='print(\'executing request {0}\'.format(t))\n'
+
+    code_to_execute +='c = coap.coap(udpPort=UDPPORT)\n'
 
     track = monitor.list_of_subTracks[t-1]
+    
     for i in range(len(track)-1):
 
-        code_to_execute = 'p = c.PUT(\'coap://[{0}]/ci\'.format(\'bbbb:0:0:0:12:4b00:14b5:'
+
+
+        code_to_execute += 'p = c.PUT(\'coap://[{0}]/ci\'.format(\'bbbb:0:0:0:12:4b00:14b5:'
 
         
                              #[i][0]+     [i][1]
         code_to_execute+=track[i][0][0]+track[i][0][1]+'\'),True,[],[1,'+str(t)+\
-        ',0x'+selected_ingress_adr[0][0]+',0x'+selected_ingress_adr[0][1]+',0x'+selected_egress_adr[0]+',0x'+selected_egress_adr[1]+','+str(bundle)+','
+        ',0x'+selected_ingress_adr[0][0]+',0x'+selected_ingress_adr[0][1]+',0x'+selected_egress_adr[0]+',0x'+selected_egress_adr[1]+','+str(bundle)
 
-        code_to_execute+=',0x'+track[i+1][0][0]+',0x'+track[i+1][0][1]+','+str(track[i+1][1])+','+str(addOrUpdate)+']\n'
+        code_to_execute+=',0x'+track[i+1][0][0]+',0x'+track[i+1][0][1]+','+str(track[i+1][1])+','+str(addOrUpdate)+'])\n'
 
         code_to_execute+='print(\'{0}\'.format(p))\n'   
-        code_to_execute+='time.sleep(5)'
+        code_to_execute+='time.sleep(5)\n'
+        
+    code_to_execute +='c.close()'
 
-        print code_to_execute
+    print code_to_execute
+
+    print 'executing the generated code...'
+
+    exec(code_to_execute)
+
 
 # read the information about the board status
 #when only sending path0 ---> results is for now list of available resources paths
