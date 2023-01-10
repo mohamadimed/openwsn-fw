@@ -17,7 +17,7 @@ class Cmonitor():
     matrix          = []
     ingress         = 2
     egress          = 0
-    NODES_IN_NETWORK = 2 #Important to set it correct, according  the number of nodes in the network
+    NODES_IN_NETWORK = 3 #Important to set it correct, according  the number of nodes in the network
     list_of_subTracks = []
 
     def __init__(self):
@@ -95,7 +95,7 @@ class Cmonitor():
     def create_track(self):
                                                     #Need to define a way to set the used royte to zero/high number so it won't be chosen when calculating 'n' route
         current_node = self.ingress
-
+        subTrack = []
 
         while (current_node != self.egress):
                         
@@ -112,14 +112,14 @@ class Cmonitor():
                         node = i
                         radio = self.best_rssi_among_radios(self.matrix[current_node][i])
                         self.matrix[current_node][i][radio] = -999 # set value of link to 0 when select this link to be part of the track
-                        self.list_of_subTracks.append([self.get_mote_address_by_index(i),radio]) #next step of track [next node @, node radio] to beused for track creation
+                        subTrack.append([self.get_mote_address_by_index(i),radio]) #next step of track [next node @, node radio] to beused for track creation
                         print ("next step is node {} on radio {}".format(self.get_mote_address_by_index(i),radio))
                         current_node = node #later i need to do mapping between node index and node address
                         
 
 
                 else: continue; #we dont have a neighbor
-        return self.list_of_subTracks
+        return subTrack
 
 #---------------------------MAIN APP---------------------------#
 
@@ -231,7 +231,7 @@ for i in range(1,len(monitor.mote_index_map)):
 print 'befor',monitor.matrix
 
 
-#---------------------CREATING generating the best TRACK----------------------------#
+#---------------------generating the best TRACK----------------------------#
 print "\n\nWe have all the necessary materials to process the best Track.\n\
 please indicate the Ingress mote index among the following :"
 
@@ -244,14 +244,52 @@ choice = input("Select the INGRESS index\n")
 monitor.ingress=choice
 
 
-choice = input("Please indicate the number of Sub-Tracks to process\n")
+nb_subTracks = input("Please indicate the number of Sub-Tracks to process\n")
 
-for i in range(choice):
-    monitor.create_track()
+for i in range(nb_subTracks):
+    monitor.list_of_subTracks.append(monitor.create_track())
 
-for i in range(monitor.list_of_subTracks):
+print 'list of subtrack',(monitor.list_of_subTracks)
 
-    print 'TRACK',i,'  = ',monitor.list_of_subTracks
+for i in range(len(monitor.list_of_subTracks)):
+    print 'TRACK',i,'  = ',monitor.list_of_subTracks[i]
+
+
+#---------------------CREATING the best TRACK----------------------------#
+#-----------------------------Code Generation----------------------------#
+
+
+#init the necessary params
+
+selected_ingress_adr = [999]
+selected_ingress_adr.insert(0,monitor.get_mote_address_by_index(monitor.ingress))
+selected_egress_adr  = monitor.get_mote_address_by_index(monitor.egress)
+
+print selected_ingress_adr
+
+addOrUpdate = 1
+bundle = 1
+
+for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID correctly[must start with 1]
+    monitor.list_of_subTracks[t-1].insert(0,selected_ingress_adr)
+
+    track = monitor.list_of_subTracks[t-1]
+    for i in range(len(track)-1):
+
+        code_to_execute = 'p = c.PUT(\'coap://[{0}]/ci\'.format(\'bbbb:0:0:0:12:4b00:14b5:'
+
+        
+                             #[i][0]+     [i][1]
+        code_to_execute+=track[i][0][0]+track[i][0][1]+'\'),True,[],[1,'+str(t)+\
+        ',0x'+selected_ingress_adr[0][0]+',0x'+selected_ingress_adr[0][1]+',0x'+selected_egress_adr[0]+',0x'+selected_egress_adr[1]+','+str(bundle)+','
+
+        code_to_execute+=',0x'+track[i+1][0][0]+',0x'+track[i+1][0][1]+','+str(track[i+1][1])+','+str(addOrUpdate)+']\n'
+
+        code_to_execute+='print(\'{0}\'.format(p))\n'   
+        code_to_execute+='time.sleep(5)'
+
+        print code_to_execute
+
 # read the information about the board status
 #when only sending path0 ---> results is for now list of available resources paths
 # result: "</m/pr>,</m/nc>"
