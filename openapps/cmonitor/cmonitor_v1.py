@@ -18,7 +18,7 @@ class Cmonitor():
     matrix          = []
     ingress         = 2
     egress          = 0
-    NODES_IN_NETWORK = 3 #Important to set it correct, according  the number of nodes in the network
+    NODES_IN_NETWORK = 4 #Important to set it correct, according  the number of nodes in the network
     list_of_subTracks = []
 
     def __init__(self):
@@ -181,7 +181,9 @@ for i in range(1,len(monitor.mote_index_map)):
 
     c = coap.coap(udpPort=UDPPORT)
     p = c.GET('coap://[{0}]/m/dr'.format(MOTE_IP))
+    
     c.close()
+    time.sleep(5)
 
     DAGRank  = struct.unpack('<H',''.join([chr(c) for c in p]))[0]
     print DAGRank
@@ -206,7 +208,7 @@ for i in range(1,len(monitor.mote_index_map)):
     c = coap.coap(udpPort=UDPPORT)
     p = c.GET('coap://[{0}]/m/nl'.format(MOTE_IP))
     c.close()
-    time.sleep(3)
+    time.sleep(5)
 
     neighborsCount = p[-1]
     #print "Number of neighbors is :",neighborsCount
@@ -278,14 +280,16 @@ for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID corre
 
     code_to_execute ='print(\'executing request {0}\'.format(t))\n'
 
-    code_to_execute +='c = coap.coap(udpPort=UDPPORT)\n'
+    
+
+    
 
     track = monitor.list_of_subTracks[t-1]
     
     for i in range(len(track)-1):
-
-
-
+        code_to_execute +='c = coap.coap(udpPort=UDPPORT)\n'
+        # code_to_execute +='access = []\n'
+        # code_to_execute +='while (access == []):\n'
         code_to_execute += 'p = c.PUT(\'coap://[{0}]/ci\'.format(\'bbbb:0:0:0:12:4b00:14b5:'
 
         
@@ -295,10 +299,12 @@ for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID corre
 
         code_to_execute+=',0x'+track[i+1][0][0]+',0x'+track[i+1][0][1]+','+str(track[i+1][1])+','+str(addOrUpdate)+'])\n'
 
-        code_to_execute+='print(\'{0}\'.format(p))\n'   
+        # code_to_execute+='    access = p\n'
+        code_to_execute+='print(\'{0}\'.format(p))\n'  
+        code_to_execute+='c.close()\n' 
         code_to_execute+='time.sleep(5)\n'
         
-    code_to_execute +='c.close()'
+    
 
     print code_to_execute
 
