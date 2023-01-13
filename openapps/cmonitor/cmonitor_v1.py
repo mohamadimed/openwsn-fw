@@ -9,6 +9,7 @@ from coap import coap
 import struct
 import netmanager
 import time
+import djikstra
 
 #---------------------------CLASS AND METHODS DEF-----------------------#
 class Cmonitor():
@@ -18,7 +19,7 @@ class Cmonitor():
     matrix          = []
     ingress         = 2
     egress          = 0
-    NODES_IN_NETWORK = 4 #Important to set it correct, according  the number of nodes in the network
+    NODES_IN_NETWORK = 3 #Important to set it correct, according  the number of nodes in the network
     list_of_subTracks = []
 
     def __init__(self):
@@ -33,7 +34,7 @@ class Cmonitor():
 
 
     def init_matrix(self,list_of_motes):
-        self.matrix = [[[0,0,0]]*(len(list_of_motes)+1) for _ in range(len(list_of_motes)+1)] #+1 for root
+        self.matrix = [[[-999,-999,-999]]*(len(list_of_motes)+1) for _ in range(len(list_of_motes)+1)] #+1 for root
         #rssi_values = np.diag([[999,999,999]]*(len(list_of_motes)+1))
         
         # for i in range(len(matrix)):
@@ -93,7 +94,7 @@ class Cmonitor():
             return index #here we return the index of the best radio to be used
 
 
-    def create_track(self):
+    def create_track_native(self): #using greedy heuristic
                                                     #Need to define a way to set the used royte to zero/high number so it won't be chosen when calculating 'n' route
         current_node = self.ingress
         subTrack = []
@@ -102,7 +103,7 @@ class Cmonitor():
                         
             for i in  range(self.NODES_IN_NETWORK):
                 
-                if(self.matrix[current_node][i]!=[0,0,0]):
+                if(self.matrix[current_node][i]!=[-999,-999,-999]):
                     #we have a neighbor
 
                     #we should test if our DagRank is lower then it so we don't consider it as a neighbor (goes down)
@@ -114,13 +115,34 @@ class Cmonitor():
                         radio = self.best_rssi_among_radios(self.matrix[current_node][i])
                         self.matrix[current_node][i][radio] = -999 # set value of link to 0 when select this link to be part of the track
                         subTrack.append([self.get_mote_address_by_index(i),radio]) #next step of track [next node @, node radio] to beused for track creation
-                        print ("next step is node {} on radio {}".format(self.get_mote_address_by_index(i),radio))
+                        # print ("next step is node {} on radio {}".format(self.get_mote_address_by_index(i),radio))
                         current_node = node #later i need to do mapping between node index and node address
                         
 
 
                 else: continue; #we dont have a neighbor
         return subTrack
+
+    def create_track_djikstra(self): #using Djikstra Algo.
+
+        subTrack = []
+        djikstra = Djikstra() #instanciation of Djikstra class
+
+        result = djikstra.find_all(self.matrix,self.ingress,self.egress) #run algo and get results
+        
+        succession = result[1] #track succession nodes
+        radio      = result[2] #communication radio succession
+
+        for i in range(1,len(succession)):
+
+            subTrack.append([succession[i],radio[i-1]]) #next step of track [next node @, node radio] to beused for track creation
+
+        return subTrack
+
+
+
+
+
 
 #---------------------------MAIN APP---------------------------#
 
@@ -251,7 +273,8 @@ monitor.ingress=choice
 nb_subTracks = input("Please indicate the number of Sub-Tracks to process\n")
 
 for i in range(nb_subTracks):
-    monitor.list_of_subTracks.append(monitor.create_track())
+    monitor.list_of_subTracks.append(monitor.create_track_native())
+    # monitor.list_of_subTracks.append(monitor.create_track_djikstra())
 
 print 'list of subtrack',(monitor.list_of_subTracks)
 
@@ -271,7 +294,7 @@ selected_egress_adr  = monitor.get_mote_address_by_index(monitor.egress)
 
 print selected_ingress_adr
 
-addOrUpdate = 1
+addOrUpdate = 0
 bundle = 1
 
 for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID correctly[must start with 1]
@@ -312,6 +335,8 @@ for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID corre
 
     exec(code_to_execute)
 
+
+#-------------------------------------------------------------------------#
 
 # read the information about the board status
 #when only sending path0 ---> results is for now list of available resources paths
