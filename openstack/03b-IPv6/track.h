@@ -22,6 +22,7 @@ typedef struct {
    bool                 is_ingress;
    bool                 is_egress;
    uint8_t              bundle_length;
+   open_addr_t          source_addr;
    open_addr_t          track_parent_addr;
    cellRadioSetting_t   track_parent_cellRadioSetting;
 } subtrack_t;

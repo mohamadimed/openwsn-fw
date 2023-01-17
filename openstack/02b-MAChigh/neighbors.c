@@ -736,6 +736,16 @@ void  neighbors_removeOld(void) {
                      CELLTYPE_RX
                       );}
                       
+                      if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_TX) == TRUE){
+                         
+                        sixtop_removeCells(
+                    0,
+                    celllist_delete,
+                    &(neighbors_vars.neighbors[i].addr_64b),
+                     CELLTYPE_TX
+                      );}
+                      
+                      
                       //then remove neighbor after deleting RX cell
                         removeNeighbor(i);
                        

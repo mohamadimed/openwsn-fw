@@ -520,6 +520,8 @@ owerror_t forwarding_send_internal_RoutingTable(
     } else {
       
       forwarding_getNextHop(&(msg->l3_destinationAdd), &(msg->l2_nextORpreviousHop),&(msg->l2_cellRadioSetting));
+      
+      //Here need to develop PSE or forwarding function
     }
 
     if (msg->l2_nextORpreviousHop.type == ADDR_NONE) {

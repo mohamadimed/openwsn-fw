@@ -22,6 +22,7 @@ bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t
 bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
 bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID);
 void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
+void track_setSourceEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte0, uint8_t byte1);
 open_addr_t track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
 
 
@@ -125,7 +126,10 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = TRUE;
                //Check and get if we are Egress point 
                if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))
-               track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
+                 track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
+               
+               //setting the source addr
+               track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                         
                track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
                track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio;
@@ -158,6 +162,9 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                         if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))
                         track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
                         
+                        //setting the source addr
+                        track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
+                        
                         track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
                         track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio;
                       
@@ -178,6 +185,9 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                                  //Check and get if we are Egress point 
                                  if(track_getIfIamIngress(ingress_addr_byte0,ingress_addr_byte1))//Define condition for Egress later/*TBD*/
                                  track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = TRUE;
+                                 
+                                 //setting the source addr
+                                 track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                                  
                                  track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
                                  track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio; 
@@ -243,6 +253,17 @@ if (ieee154e_isSynch() == FALSE) {
                //Check and get if we are Egress point 
                if(track_getIfIamIngress(msg->payload[2],msg->payload[3]))
                track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = FALSE;
+               
+               
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[0] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[1] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[2] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[3] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[4] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[5] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[6] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[7] = 0;
+               
                         
                track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[0] = 0;
                track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[1] = 0;
@@ -354,6 +375,8 @@ bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t
             if(outcome == E_SUCCESS)
             is_Reserved = TRUE;
             }
+      
+      
 
    return is_Reserved;
 }
@@ -464,8 +487,22 @@ void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte
    track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[4] = 0x14;
    track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[5] = 0xb5;
 
+}
+
+
+void track_setSourceEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte0, uint8_t byte1)
+{  track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.type = ADDR_64B;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[6] = byte0;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[7] = byte1;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[0] = 0x00;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[1] = 0x12;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[2] = 0x4b;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[3] = 0x00;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[4] = 0x14;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[5] = 0xb5;
 
 }
+
 
 open_addr_t track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1)
 

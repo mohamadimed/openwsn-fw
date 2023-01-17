@@ -513,10 +513,29 @@ void msf_housekeeping(void){
           // will remove this for now to have the node proceed with cell addition even if cell clearing is not successful.
           return;
     }
-
-    if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_TX)==0){
+          //This is the original instruction has been commented and replaced by the one below
+  /*      if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_TX)==0){
         msf_vars.needAddTx = TRUE;
         msf_trigger6pAdd();
+                
+        return;
+    }*/
+    
+    //ADD this to get RX negociated cell on creating TX
+    if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_TX)==0){
+        //msf_vars.needAddRx = TRUE;
+        //msf_trigger6pAdd();
+        
+        msf_vars.needAddTx = TRUE;
+        msf_trigger6pAdd();
+        msf_vars.needAddTx = FALSE;
+        return;
+    }
+    
+        if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_RX)==0){
+        msf_vars.needAddRx = TRUE;
+        msf_trigger6pAdd();
+        msf_vars.needAddRx = FALSE;
         return;
     }
 
