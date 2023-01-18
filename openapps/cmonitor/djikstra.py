@@ -7,7 +7,7 @@
 
 
 
-class Dijkstra():
+class Djikstra():
 
 	def __init__(self):
 		
@@ -17,18 +17,22 @@ class Dijkstra():
 
 	
 	def best_rssi_among_radios(self,rssi_per_radio):
-        	best  = rssi_per_radio[0]
-        	index = 0
-        	for i in range(1,len(rssi_per_radio)):
-                		if rssi_per_radio[i] > best:
-                			index = i
-                   		 	best = rssi_per_radio[i]
-                    		
-                    		
-    		
-    		
-    		print ("index of best is ",rssi_per_radio,best,index)
-    		return best,index #returning the best value and it's index
+			best = 0
+			index = 0
+			for i in range(3):
+				if rssi_per_radio[i]<0:
+
+					best = rssi_per_radio[i]
+					index = i
+					break
+
+			for i in range(0,len(rssi_per_radio)):
+				if (rssi_per_radio[i] >= best and rssi_per_radio[i] < 0):
+					index = i
+					best = rssi_per_radio[i]
+					# print rssi_per_radio[0], rssi_per_radio[1], rssi_per_radio[2]
+					# print index, best
+			return best,index #returning the best value and it's index
 
 
 	def find_all(self,wmat, start, end=-1):
@@ -53,6 +57,8 @@ class Dijkstra():
 	    """
 	    n = len(wmat)
 
+	    # print "M=",wmat
+	    # print "S=",start
 	    #dist = [inf]*n
 
 	    dist = [-999]*n
@@ -77,12 +83,12 @@ class Dijkstra():
 	        for v in range(len(spVertex)):
 
 	            
-	            print "-------",dist[v]
+	            # print "-------",dist[v]
 
 	            if spVertex[v] == False and dist[v] >= minix:
-	            	print 'Before: minx = ',minix, ' dist[',v,']= ',dist[v]
+	            	# print 'Before: minx = ',minix, ' dist[',v,']= ',dist[v]
 	                minix = dist[v]
-	                print 'After: minx = ',minix
+	                # print 'After: minx = ',minix
 	                u = v
 	            
 	            	
@@ -91,16 +97,17 @@ class Dijkstra():
             		wmat_value = self.best_rssi_among_radios(wmat[u][v])[0]
             		wmat_index = self.best_rssi_among_radios(wmat[u][v])[1]
 
-
-            		if not(spVertex[v]) and wmat[u][v] != [0,0,0] and dist[u] + wmat_value > dist[v]:
-            			print wmat_value, wmat_index
+            		# print dist[u] , wmat_value , dist[v]
+            		if not(spVertex[v]) and wmat[u][v] != [0,0,0]  and  dist[u] + wmat_value > dist[v]:
+            			# print wmat_value, wmat_index
                 		parent_value[v] = u
+                		# print "IAM HERE"
                 		parent_index[v] = wmat_index
                 		dist[v] = dist[u]+wmat_value
 
                 		#mark point as selected 
-                		wmat[u][v][wmat_index] = -999
-                		print dist[v]
+                		wmat[u][v][wmat_index] = 0
+                		# print dist[v]
                 		
 	    
 	    
@@ -119,8 +126,9 @@ class Dijkstra():
 	    	radio.append(parent_index[path[end][i]])
 
 
-	    print parent_index
-	    print radio
+	    # print parent_index
+	    # print radio
+	    # print "M=",wmat
 	    return (dist[end], path[end],radio) if end >= 0 else (dist, path)
 
 
@@ -165,11 +173,11 @@ class Dijkstra():
 #         [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [7,8,9], [5,6,7], [0,0,0], [6,7,8]],
 #         [[0,0,0], [0,0,0], [1,2,3], [0,0,0], [0,0,0], [0,0,0], [6,7,8], [0,0,0]]]
 
-# wmat = [[[0,0,0],    [-83,-95,-101],[-80,-97,-100],[0,0,0],    [0,0,0]], #node 0
-# 		      						[[-95, -97,-83],[0,0,0],    [-80,-97,-100],[-83,-95,-101],[0,0,0]], #node 1 --> 0()
-# 		      						[[-83,-95,-101],[-80,-97,-100],[0,0,0],    [-81,-99,-94], [0,0,0]], #node 2 --> 
-# 		      						[[0,0,0],    [-95,-80,-92], [-81,-99,-94], [0,0,0],    [-83,-95,-101]], #node 3 --> 1(FSK)
-# 		      						[[0,0,0],    [0,0,0],    [0,0,0],    [-80,-97,-100],[0,0,0]]] #node 4 --> 3(QPSK)
+# wmat = [[[0,0,0],    [0,0,0],[-80,-97,-100],[0,0,0],    [0,0,0]], #node 0
+#  		      						[[-95, 0,-83],[0,0,0],    [-80,-97,-100],[-83,-95,-101],[0,0,0]], #node 1 --> 0()
+#  		      						[[-83,-95,-101],[-80,-97,-100],[0,0,0],    [-81,-99,-94], [0,0,0]], #node 2 --> 
+#  		      						[[0,0,0],    [-95,-80,-92], [-81,-99,-94], [0,0,0],    [-83,-95,-101]], #node 3 --> 1(FSK)
+#  		      						[[0,0,0],    [0,0,0],    [0,0,0],    [-80,-97,-100],[0,0,0]]] #node 4 --> 3(QPSK)
 
 # wmat = [[0, 2, 0, 0, 0, 1, 0, 0],
 #         [2, 0, 2, 2, 4, 0, 0, 0],
@@ -179,12 +187,17 @@ class Dijkstra():
 #         [1, 0, 0, 3, 0, 0, 5, 0],
 #         [0, 0, 0, 0, 7, 5, 0, 6],
 #         [0, 0, 1, 0, 0, 0, 6, 0]]
-# dijkstra = Dijkstra()
 
-# print(dijkstra.find_all(wmat, 0))
+# wmat =  [[[0,0,0], [0,0,0], [0,0,0], [0,0,0]], [[-52, -45, -47], [0,0,0], [-20, -23, -27], [-39, -44, -48]], [[-05, 0, 0], [0,0,0], [0,0,0], [-41, -44, -49]], [[-34, -27, -29], [-42, -42, -46], [-38, -43, -46], [0,0,0]]]
 
-# print(dijkstra.find_all(wmat, 4,0))
-# print(dijkstra.find_all(wmat, 4,0))
+
+
+# djikstra = Djikstra()
+
+# print(djikstra.find_all(wmat, 0))
+
+# print(djikstra.find_all(wmat, 4,0))
+# print(djikstra.find_all(wmat, 2,0))
 
 
 

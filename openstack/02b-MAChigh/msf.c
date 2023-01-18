@@ -521,23 +521,21 @@ void msf_housekeeping(void){
         return;
     }*/
     
-    //ADD this to get RX negociated cell on creating TX
+   
     if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_TX)==0){
-        //msf_vars.needAddRx = TRUE;
-        //msf_trigger6pAdd();
         
         msf_vars.needAddTx = TRUE;
         msf_trigger6pAdd();
-        msf_vars.needAddTx = FALSE;
+        //msf_vars.needAddTx = FALSE; //ADD this to get RX negociated cell on creating TX
         return;
-    }
-    
+    }/*
+        //ADD this to get RX negociated cell on creating TX
         if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_RX)==0){
         msf_vars.needAddRx = TRUE;
         msf_trigger6pAdd();
         msf_vars.needAddRx = FALSE;
         return;
-    }
+    }*/
 
     if (msf_vars.waitretry){
         return;
