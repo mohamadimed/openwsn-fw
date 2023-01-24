@@ -15,7 +15,7 @@ track_vars_t track_vars;
 
 //=========================== prototypes ======================================
 
-bool track_getTrackExistenceByID(uint8_t trackID);
+//bool track_getTrackExistenceByID(uint8_t trackID); defined in track.h to allow external access to the function
 bool track_getSubTrackExistenceByID(uint8_t TrackID, uint8_t subTrackID);
 bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1);
 bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
@@ -522,6 +522,128 @@ open_addr_t track_getParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint
 }
 
 
+open_addr_t* track_getIngressAddr64(uint8_t trackID)
+
+{ uint8_t i;
+  open_addr_t* source_address;
+
+   for (i=1;i<=track_vars.nb_tracks;i++)
+
+      if (track_vars.track_list[i].track_id == trackID)
+      {source_address = &(track_vars.track_list[trackID].subtrack_list[trackID].source_addr);break;}
+
+  return source_address;
+
+}
+            
+            
+open_addr_t* track_getParentAddr64(uint8_t trackID)
+
+{ uint8_t i,j;
+  open_addr_t* parent_address;
+
+  for (i=1;i<=track_vars.nb_tracks;i++)
+  
+    if (track_vars.track_list[i].track_id == trackID)
+
+      {  for(j=1;j<=MAX_NUM_SUBTRACKS;j++)
+            if(track_vars.track_list[i].subtrack_list[j].subtrack_id == j){
+            parent_address = &(track_vars.track_list[i].subtrack_list[j].track_parent_addr);
+            break;}
+      }
+
+  return parent_address;
+
+}      
+
+            
+cellRadioSetting_t track_getParentRadio(uint8_t trackID) //This function as it is not compliant with Ingress point, it only gives it the firs subtrack info, we may need to implement someting like to allow ingress to select next hop (@,radio) by subtrack
+
+{ uint8_t i,j;
+  cellRadioSetting_t   parent_cellRadioSetting;
+
+   for (i=1;i<=track_vars.nb_tracks;i++)
+
+      if (track_vars.track_list[i].track_id == trackID)
+
+      {  for(j=1;j<=MAX_NUM_SUBTRACKS;j++)
+            if(track_vars.track_list[i].subtrack_list[j].subtrack_id == j){
+            parent_cellRadioSetting = (track_vars.track_list[i].subtrack_list[j].track_parent_cellRadioSetting);
+            break;}
+      }
+
+  return parent_cellRadioSetting;
+
+}   
+
+bool track_getIsIngress(uint8_t trackID)
+
+{ uint8_t i,j;
+  bool  is_ingress;
+  is_ingress = FALSE;
+
+   for (i=1;i<=track_vars.nb_tracks;i++)
+
+      if (track_vars.track_list[i].track_id == trackID)
+      
+      {  for(j=1;j<=MAX_NUM_SUBTRACKS;j++)
+            if(track_vars.track_list[i].subtrack_list[j].subtrack_id == j){
+            if (track_vars.track_list[trackID].subtrack_list[trackID].is_ingress == TRUE){
+                  is_ingress = TRUE;
+                  break;}}
+      }
+
+
+
+
+  return is_ingress;
+
+}   
+
+            
+bool track_getIsEgress(uint8_t trackID)
+
+{ uint8_t i;
+  bool  is_egress;
+  is_egress = FALSE;
+
+   for (i=1;i<=track_vars.nb_tracks;i++)
+
+      if (track_vars.track_list[i].track_id == trackID)
+          if (track_vars.track_list[trackID].subtrack_list[trackID].is_egress == TRUE){
+                  is_egress = TRUE;
+                  break;}
+
+  return is_egress;
+
+}               
+
+uint8_t track_getNbTracks()
+
+{ 
+
+  return track_vars.nb_tracks;
+
+}              
+ 
+            
+uint8_t track_getNbSubTracks(uint8_t trackID)
+
+{ uint8_t i;
+  uint8_t nb_subTracks;
+  
+  nb_subTracks =0 ;
+
+   for (i=1;i<=track_vars.nb_tracks;i++)
+
+     if (track_vars.track_list[i].track_id == trackID){
+                  nb_subTracks = track_vars.track_list[trackID].num_subtracks;
+                  break;}
+
+  return nb_subTracks;
+
+}   
+            
 /*
     Payload format for Track creation. This packet should be created by 
      the PCE and sent to every concerned node in the mesh network

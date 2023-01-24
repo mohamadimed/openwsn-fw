@@ -11,7 +11,7 @@
 #include "openudp.h"
 #include "debugpins.h"
 #include "scheduler.h"
-
+#include "track.h"
 //=========================== variables =======================================
 
 //=========================== prototypes ======================================
@@ -504,8 +504,17 @@ owerror_t forwarding_send_internal_RoutingTable(
         uint32_t *flow_label,
         uint8_t fw_SendOrfw_Rcv
 ) {
-
+  //added by mm to enable forwarding in track
+    bool track_existence;
+    bool is_same_addr;
+    open_addr_t*  IngressAddr64b;
+    open_addr_t*  ParentAddr64b;
+    uint8_t next_hop_addr[8];
+   //end adding 
     open_addr_t temp_prefix64btoWrite;
+    
+    uint8_t test;
+    is_same_addr = 0;
 
     // retrieve the next hop from the routing table
     if (
@@ -517,12 +526,45 @@ owerror_t forwarding_send_internal_RoutingTable(
             packetfunctions_ip128bToMac64b(&(msg->l3_destinationAdd), &temp_prefix64btoWrite,
                                            &(msg->l2_nextORpreviousHop));
         }
-    } else {
-      
+            } else {     //case using track
+
+              
+                 //check if we are INGRESS OR NOT to decide what to do next 
+                 //if (track_getIsIngress(trackID))  if yes how many subtracks I have? what should I do?  
+                 //track_getNbSubTracks(uint8_t trackID)
+                 //if (track_getIsIngress(1)) test =1;                               -------------TBD later----------
+                    
+        //check if track exists
+        track_existence = track_getTrackExistenceByID(icmpv6rpl_getRPLIntanceID()+1);
+        //get Ingress 64EUI addr
+        IngressAddr64b = track_getIngressAddr64(icmpv6rpl_getRPLIntanceID()+1);
+        //check if source @ is the same as the Ingress @
+        if( msg->l3_sourceAdd.addr_128b[14] == (IngressAddr64b->addr_64b[6]) && msg->l3_sourceAdd.addr_128b[15] == (IngressAddr64b->addr_64b[7]))
+           is_same_addr = 1;  
+                        //Filtering data packets then filtering by track ID and source @ to get next hop
+                if (            
+            (msg->l4_protocol == IANA_UDP ||
+            msg->creator == COMPONENT_UINJECT) && (track_existence && is_same_addr)
+              ){
+                
+       //Getting the next hop Address and Radio from track vars
+       ParentAddr64b = (track_getParentAddr64(1));   
+       memcpy(&(msg->l2_nextORpreviousHop),&(ParentAddr64b->addr_64b[-1]), LENGTH_ADDR64b+1);
+
+       msg->l2_nextORpreviousHop.type = ADDR_64B; 
+       
+       msg->l2_cellRadioSetting = track_getParentRadio(1);
+        } 
+        // case we are in DATA packet but we don't have yet track, go back to rpl routing to get next hop
+
+
+       
+      else { //case using rpl routing
+
       forwarding_getNextHop(&(msg->l3_destinationAdd), &(msg->l2_nextORpreviousHop),&(msg->l2_cellRadioSetting));
-      
-      //Here need to develop PSE or forwarding function
-    }
+            
+         }
+            }
 
     if (msg->l2_nextORpreviousHop.type == ADDR_NONE) {
         openserial_printError(

@@ -49,7 +49,14 @@ typedef struct {
 void     track_init(void);
 owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg);
 owerror_t  track_deleteTrack(OpenQueueEntry_t* msg);
-
+open_addr_t* track_getIngressAddr64(uint8_t trackID);
+bool track_getTrackExistenceByID(uint8_t trackID);
+cellRadioSetting_t track_getParentRadio(uint8_t trackID);
+open_addr_t* track_getParentAddr64(uint8_t trackID);
+bool track_getIsEgress(uint8_t trackID);
+bool track_getIsIngress(uint8_t trackID);
+uint8_t track_getNbSubTracks(uint8_t trackID);
+uint8_t track_getNbTracks();
 
 
 /**
