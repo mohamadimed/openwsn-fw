@@ -244,6 +244,9 @@ bool              schedule_hasNegotiatedTxCellToNonParent(
 );
 
 // from IEEE802154E
+//By mm
+schedule_vars_t schedule_getScheduleVars();
+
 void               schedule_syncSlotOffset(slotOffset_t targetSlotOffset);
 void               schedule_advanceSlot(void);
 slotOffset_t       schedule_getNextActiveSlotOffset(void);

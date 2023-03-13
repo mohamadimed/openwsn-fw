@@ -441,6 +441,8 @@ typedef struct {
    //l2
    owerror_t     l2_sendDoneError;                              // outcome of trying to send this packet
    open_addr_t   l2_nextORpreviousHop;                          // 64b IEEE802.15.4 next (down stack) or previous (up) hop address
+         //added by mm to get destination 64b address of the received packet
+   open_addr_t   l2_destAddr;                          // 64b IEEE802.15.4 destination address
    cellRadioSetting_t  l2_cellRadioSetting;                     // radio setting for this packet 
    uint8_t       l2_frameType;                                  // beacon, data, ack, cmd
    uint8_t       l2_dsn;                                        // sequence number of the received frame

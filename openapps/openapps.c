@@ -45,7 +45,7 @@ void openapps_init(void) {
           //cinfo_init();
         //cleds__init();
        //cjoin_init();
-      // cwellknown_init();
+      cwellknown_init();
   //rrt_init();
           //cexample_init();
           cmonitor_init();

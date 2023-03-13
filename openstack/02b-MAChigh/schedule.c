@@ -799,6 +799,17 @@ uint8_t schedule_getNumberOfFreeEntries(){
     return counter;
 }
 
+
+
+//added by mm to fetch schedule and get all enteries by cmonitor
+// this sort of loses its meaning now
+// unless you pass it a parameter of superSlotLength.
+schedule_vars_t schedule_getScheduleVars(){
+
+    return  schedule_vars;
+}
+
+
 // New function to get the number of available superSlot entries
 // author: Mina Rady
 uint8_t schedule_getNumberOfSuperSlotFreeEntries( uint8_t requestedSlotLength){

@@ -892,6 +892,10 @@ port_INLINE void activity_synchronize_endOfFrame(PORT_TIMER_WIDTH capturedTime) 
       ieee154e_vars.dataReceived->l2_dsn       = ieee802514_header.dsn;
       memcpy(&(ieee154e_vars.dataReceived->l2_nextORpreviousHop),&(ieee802514_header.src),sizeof(open_addr_t));
 
+      //added by mm to get destination 64b address of the received packet
+      
+      memcpy(&(ieee154e_vars.dataReceived->l2_destAddr),&(ieee802514_header.dest),sizeof(open_addr_t));      
+      
       // verify that incoming security level is acceptable
       if (IEEE802154_security_acceptableLevel(ieee154e_vars.dataReceived, &ieee802514_header) == FALSE) {
             break;

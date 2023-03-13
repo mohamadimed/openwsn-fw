@@ -16,7 +16,8 @@
 #include "idmanager.h"
 #include "schedule.h"
 #include "msf.h"
-
+#include "track.h"
+#include "iphc.h"
 //=========================== define ==========================================
 
 // in seconds: sixtop maintaince is called every 30 seconds
@@ -417,6 +418,8 @@ void task_sixtopNotifSendDone(void) {
         return;
     }
 
+           
+    
     // take ownership
     msg->owner = COMPONENT_SIXTOP;
 
@@ -429,7 +432,7 @@ void task_sixtopNotifSendDone(void) {
             msg->l2_sendOnTxCell,
             TRUE,
             &msg->l2_asn
-        );
+        );                
     } else {
         neighbors_indicateTx(
              &(msg->l2_nextORpreviousHop),
@@ -438,7 +441,7 @@ void task_sixtopNotifSendDone(void) {
              msg->l2_sendOnTxCell,
              FALSE,
              &msg->l2_asn
-        );
+        );               
     }
 
     // send the packet to where it belongs
@@ -467,6 +470,7 @@ void task_sixtopNotifSendDone(void) {
         default:
             // send the rest up the stack
             frag_sendDone(msg,msg->l2_sendDoneError);
+                            
             break;
     }
 }
@@ -474,6 +478,26 @@ void task_sixtopNotifSendDone(void) {
 void task_sixtopNotifReceive(void) {
     OpenQueueEntry_t* msg;
     uint16_t          lenIE;
+    
+      //added by mm to enable forwarding in track
+ /*  bool track_existence;
+    bool is_same_addr;
+    bool is_egress;
+    bool i_am_destination,to_all_routers,i_am_egress;
+    open_addr_t*  IngressAddr64b,l3_destinationAdd;
+    open_addr_t*  ParentAddr64b,l3_sourceAdd;
+    uint8_t next_hop_addr[8];
+    ipv6_header_iht ipv6_outer_header;
+    ipv6_header_iht ipv6_inner_header;
+    
+    ipv6_header_iht* ipv6_outer_header_p;
+    ipv6_header_iht* ipv6_inner_header_p;
+    
+    uint8_t page_length,ret,l4_protocol;
+    
+    memset(&ipv6_outer_header, 0, sizeof(ipv6_header_iht));
+    memset(&ipv6_inner_header, 0, sizeof(ipv6_header_iht));*/
+    
     // get received packet from openqueue
     msg = openqueue_sixtopGetReceivedPacket();
     if (msg==NULL) {
@@ -522,7 +546,7 @@ void task_sixtopNotifReceive(void) {
     // send the packet up the stack, if it qualifies
     switch (msg->l2_frameType) {
     case IEEE154_TYPE_BEACON:
-    case IEEE154_TYPE_DATA:
+    case IEEE154_TYPE_DATA:    
     case IEEE154_TYPE_CMD:
         if (msg->length>0) {
             if (msg->l2_frameType == IEEE154_TYPE_BEACON){
@@ -531,6 +555,7 @@ void task_sixtopNotifReceive(void) {
                 openqueue_freePacketBuffer(msg);
                 break;
             }
+                       
             // send to upper layer
             frag_receive(msg);
         } else {

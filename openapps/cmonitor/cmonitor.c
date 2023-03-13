@@ -14,6 +14,7 @@
 #include "IEEE802154E.h"
 #include "neighbors.h"
 #include "icmpv6rpl.h"
+#include "schedule.h"
 
 //=========================== defines =========================================
 
@@ -22,7 +23,7 @@ const uint8_t cmonitor_nighborsCount_path1[]      = "nc";
 const uint8_t cmonitor_DAGRank_path1[]      = "dr";
 const uint8_t cmonitor_preferredParent_path1[]         = "pr"; //here we return parent@ (last 2 Bytes), parent radio
 const uint8_t cmonitor_nighborsList_path1[]         = "nl"; //here we return list of neighbors@ (last 2 Bytes), neighbors radio, and neighbors RSSI [@,radio,RSSI] x neighborsCount
-
+const uint8_t cmonitor_cellList_path1[]         = "cl"; //here we return parent@ (last 2 Bytes), parent radio
 //=========================== variables =======================================
 
 cmonitor_vars_t cmonitor_vars;
@@ -116,6 +117,10 @@ void cmonitor_register(
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_nighborsList_path1)-1;
          cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_nighborsList_path1);
          break;      
+      case CELL_LIST:
+         cmonitor_resource->desc.path1len   = sizeof(cmonitor_cellList_path1)-1;
+         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_cellList_path1);
+         break;
       default:
          break;
 
@@ -274,7 +279,8 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[0] = oqs.minBuffSize;*/
          
           case NEIGHBORS_COUNT:       
-          //Num Neighbors
+          //Num Neighbors        
+      
           packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
           numNeighbors = neighbors_getNumNeighbors();
           msg->payload[0] = numNeighbors;
@@ -303,7 +309,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
          }
          
          case NEIGHBORS_LIST:
-         //returning list of neighbors for each [num_neighbors]+ liste:[@(last 2-bytes), radio, RSSI]
+         //returning list of neighbors for each node:  liste:[@(last 2-bytes), radio, RSSI] + [num_neighbors] 
           packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
           numNeighbors = neighbors_getNumNeighbors();
           msg->payload[0] = numNeighbors;
@@ -324,9 +330,54 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
             msg->payload[0] = Neighbor.addr_64b[6];
           }                               }
               }//END loop-for neighbors check
+         
+         break;
+         case CELL_LIST:
+         //returning list of celss for each [num_cells]+ liste:[slot,channel, is_hard,linkoption,@(last 2-bytes),cellRadioSetting]
 
          
+          
+          
+          uint8_t i,num_cells;
+          num_cells = 0;
+          schedule_vars_t schedule_vars;
+          
+          schedule_vars = schedule_getScheduleVars();
+          
+          INTERRUPT_DECLARATION();
+          DISABLE_INTERRUPTS();
+                                            //MAX payload is 56
+          for(i=0;i<MAXACTIVESLOTS;i++) {
+          if(schedule_vars.scheduleBuf[i].type          != CELLTYPE_OFF)  
+          
+          //CELLTYPE_TXRX, CELLTYPE_RX, CELLTYPE_TX, CELLTYPE_OFF
+           // schedule_vars.scheduleBuf[i].shared                         &&
+           // schedule_vars.scheduleBuf[i].neighbor.type == ADDR_64B      &&
+            
+        {       if (num_cells<8){ //To not crash if we overload (MAX 56 entery)
+            num_cells ++;
+            packetfunctions_reserveHeaderSize(msg,7*sizeof(uint8_t)); 
+            msg->payload[6] = schedule_vars.scheduleBuf[i].cellRadioSetting;
+            msg->payload[5] = schedule_vars.scheduleBuf[i].neighbor.addr_64b[7];
+            msg->payload[4] = schedule_vars.scheduleBuf[i].neighbor.addr_64b[6];
+            msg->payload[3] = schedule_vars.scheduleBuf[i].type;
+            msg->payload[2] = schedule_vars.scheduleBuf[i].isHardCell;
+            msg->payload[1] = schedule_vars.scheduleBuf[i].channelOffset;
+            msg->payload[0] = schedule_vars.scheduleBuf[i].slotOffset;
+        }
+            ENABLE_INTERRUPTS();
+
+        }
+           }//End fetching schedule
+
+          ENABLE_INTERRUPTS();
+
+          break;
+        default:
+         break; 
+          
          } //switch END
+       
 /*
             
        

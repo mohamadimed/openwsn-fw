@@ -203,19 +203,7 @@ owerror_t forwarding_send(OpenQueueEntry_t *msg) {
     // both of them are compressed
     ipv6_outer_header.next_header_compressed = TRUE;
     
-/*/-------------------------------------------    
-    if(msg->creator == COMPONENT_CMONITOR)   { 
-                   return forwarding_send_internal_SourceRouting(
-                            msg,
-                            &ipv6_outer_header,
-                            &ipv6_inner_header,
-#ifdef DEADLINE_OPTION_ENABLED
-                            &deadline_option,
-#endif
-                            &rpl_option
-                    );
-                    } else
-//------------------------------------------    */
+
     return forwarding_send_internal_RoutingTable(
             msg,
             &ipv6_outer_header,
@@ -526,7 +514,9 @@ owerror_t forwarding_send_internal_RoutingTable(
             packetfunctions_ip128bToMac64b(&(msg->l3_destinationAdd), &temp_prefix64btoWrite,
                                            &(msg->l2_nextORpreviousHop));
         }
-            } else {     //case using track
+            } //added for test forwording in sixtop after commenting the above
+
+else {     //case using track
 
               
                  //check if we are INGRESS OR NOT to decide what to do next 
@@ -554,7 +544,13 @@ owerror_t forwarding_send_internal_RoutingTable(
        msg->l2_nextORpreviousHop.type = ADDR_64B; 
        
        msg->l2_cellRadioSetting = track_getParentRadio(1);
-        } 
+       
+       
+       
+        }  //added for test forwording in sixtop after commenting the above
+    
+    
+    
         // case we are in DATA packet but we don't have yet track, go back to rpl routing to get next hop
 
 
@@ -564,7 +560,7 @@ owerror_t forwarding_send_internal_RoutingTable(
       forwarding_getNextHop(&(msg->l3_destinationAdd), &(msg->l2_nextORpreviousHop),&(msg->l2_cellRadioSetting));
             
          }
-            }
+            }  //added for test forwording in sixtop after commenting the above
 
     if (msg->l2_nextORpreviousHop.type == ADDR_NONE) {
         openserial_printError(

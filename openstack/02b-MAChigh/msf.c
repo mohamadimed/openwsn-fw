@@ -64,7 +64,7 @@ void msf_init(void) {
         CELLRADIOSETTING_FALLBACK,                                       // default radio setting
         msf_hashFunction_getChanneloffset(idmanager_getMyID(ADDR_64B)),  // channel offset
         &temp_neighbor,                                                  //Neighbor
-        FALSE                                                             //Hard Cell? consider Autonoumous RX cell as hard cell (TRUE)                                        
+        FALSE                                                             //Hard Cell? consider Autonoumous RX cell as soft cell (FALse)                                        
     );
 
     msf_vars.housekeepingTimerId = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_MSF);
