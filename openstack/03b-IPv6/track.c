@@ -18,7 +18,8 @@ track_vars_t track_vars;
 //bool track_getTrackExistenceByID(uint8_t trackID); defined in track.h to allow external access to the function
 bool track_getSubTrackExistenceByID(uint8_t TrackID, uint8_t subTrackID);
 bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1);
-bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
+//bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
+bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle, uint8_t slotoffset, uint8_t channeloffset);
 bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
 bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID);
 void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
@@ -79,7 +80,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
       //Feed track vars from the received packet
       
       uint8_t trackID, subTrackID;
-      uint8_t bundle_length, parent_radio;
+      uint8_t bundle_length, parent_radio,slotoffset,channeloffset;
       uint8_t parent_addr_byte0, parent_addr_byte1;
       uint8_t ingress_addr_byte0, ingress_addr_byte1;
       open_addr_t parent;
@@ -94,8 +95,8 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
       parent_addr_byte0     = msg->payload[7];
       parent_addr_byte1     = msg->payload[8];
       parent_radio          = msg->payload[9];
-
-
+      slotoffset            = msg->payload[11];
+      channeloffset         = msg->payload[12];
       //fill parent address with first 48 bytes
        parent=track_getParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
 
@@ -109,7 +110,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
             return 0;
 
          //we are not out of rang of MAX_NUM TRACKS
-               if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) 
+               if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length,slotoffset,channeloffset)) 
                
                {
                   //Track defined by trackId,subTrackID exists so proceed to suppression
@@ -149,7 +150,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                
                    //we are not out of rang of MAX_NUM TRACKS
                            
-                        if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) 
+                        if(track_reserveTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length,slotoffset,channeloffset)) 
                         {                      
                         //get SubTrack info
                         track_vars.track_list[trackID].num_subtracks++;
@@ -341,19 +342,25 @@ bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1)
   return is_ingress;
 }
 
-bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle)
+bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle, uint8_t slotoffset, uint8_t channeloffset)
 
 {  bool is_Reserved = FALSE;
    cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
    uint8_t               cellOptions;
    owerror_t             outcome;
 
-      /*TBD LOOP using bundle*/
-
-      if (msf_candidateAddCellList(celllist_add,bundle,neighborRadio)==FALSE)
-            is_Reserved = FALSE;
+      /*We don't install cells automatically but we use next to select cell from Received CoAP packet*/
+      //if (msf_candidateAddCellList(celllist_add,bundle,neighborRadio)==FALSE)
+      //      is_Reserved = FALSE;
                      
-      else  {
+      //else  
+      //Like this the solution supports only bundle = 1
+            celllist_add[0].slotoffset       = slotoffset;
+            celllist_add[0].channeloffset    = channeloffset;
+            celllist_add[0].cellRadioSetting = neighborRadio;
+            celllist_add[0].isUsed           = TRUE;
+
+      {
             cellOptions = CELLOPTIONS_TX;
             cellOptions |= neighborRadio <<5;//0 <<5;//CELLRADIOSETTING_3 <<5;//neighborRadio <<5;
 

@@ -10,17 +10,23 @@ import struct
 import netmanager
 import time
 import djikstra as djkstra
-
+import numpy as np
+import matplotlib.pyplot as plt
+import subprocess
 #---------------------------CLASS AND METHODS DEF-----------------------#
 class Cmonitor():
 
     DAGRank_List    = [256]
-    mote_index_map  = [['d3','19']]
+    mote_index_map  = []
     matrix          = []
-    ingress         = 2
+    ingress         = 0
     egress          = 0
+    root_address    = '12:4b00:14b5:d319'
     NODES_IN_NETWORK = 2 #Important to set it correct, according  the number of nodes in the network
     list_of_subTracks = []
+    schedule          = []
+    schedule_len        = 101
+    available_channels  = 16
 
     def __init__(self):
        return
@@ -143,8 +149,10 @@ class Cmonitor():
         return subTrack
 
 
+    def init_schedule(self):
+        self.schedule = np.array([[0 for _ in range (self.available_channels)] for _ in range(self.schedule_len)])
 
-
+        return self.schedule
 
 
 #---------------------------MAIN APP---------------------------#
@@ -177,18 +185,24 @@ while motes_list == [] or len(motes_list) != (monitor.NODES_IN_NETWORK-1):
     del motes_list[:]
     motes_list = netinfo.get_motes_list()
 
+
+
 #Now print list of available motes in the mesh network (downward RPL route)
 print("\nAvailable down routes are for the following nodes:\n")
 
-for i in range(len(motes_list)):
-    print("ID: {} -- @: {}".format(i+1,motes_list[i]))
+#insert the address of the root before printing it
+motes_list.insert(0,monitor.root_address)
 
+for i in range(len(motes_list)):
+    
+    print("ID: {} -- @: {}".format(i,motes_list[i]))
+    
 #get the last two bytes of a node address in string format    
 for i in range(len(motes_list)):
     byte0 = motes_list[i][-4:-2]
     byte1 = motes_list[i][-2:]
     monitor.mote_index_map.append([byte0,byte1])
-#print monitor.mote_index_map
+print monitor.mote_index_map
 
 #-----------cerate and fill matrix-----------
 matrix = monitor.init_matrix(motes_list)
@@ -219,9 +233,63 @@ for i in range(1,len(monitor.mote_index_map)):
 
 
 print "DAGRank_List = ",monitor.DAGRank_List
-"""
 
-#-------------Getting the LIST of Neighbors-------------#
+"""
+#-------------Init the Schedule matrix-------------#
+schedule = monitor.init_schedule()
+#-------------Getting the Schedule-------------#
+resource = 'cl'
+
+for i in range(1,len(monitor.mote_index_map)):
+    
+    cellList     = []
+    MOTE_IP      = 'bbbb::12:4b00:14b5:'+monitor.mote_index_map[i][0]+monitor.mote_index_map[i][1]
+    my_index     = monitor.get_mote_index_by_address(int(monitor.mote_index_map[i][0],16),int(monitor.mote_index_map[i][1],16))
+    print "Asking mote: ",MOTE_IP, "for his CellList"
+    #print "my index is ", my_index
+    p = []
+    y = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+    while (p == []):
+        print '...'
+        c = coap.coap(udpPort=UDPPORT)
+        p = c.GET('coap://[{0}]/m/cl'.format(MOTE_IP))
+        c.close()
+        time.sleep(15)
+
+    CellsCount = 0
+
+    for i in range(0,len(p),7):
+        slot    = p[i]
+        channel = p[i+1]
+        is_hard = p[i+2] # 0: Soft Cell/ 1: Hard Cell
+        link_op = p[i+3] # 0: OFF / 1: TX / 2: RX / 3:TXRX
+        byte0   = p[i+4]
+        byte1   = p[i+5]
+        radio   = p[i+6]
+
+        CellsCount=CellsCount+1
+
+        #set a neighbor list
+        cellList.append([slot,channel,is_hard,link_op,hex(byte0),hex(byte1),radio])
+        if radio == 0:
+            monitor.schedule[slot][channel]   = 4
+            monitor.schedule[slot+1][channel] = 4
+        if radio == 1:
+            monitor.schedule[slot][channel]   = 7
+            monitor.schedule[slot+1][channel] = 7
+            monitor.schedule[slot+2][channel] = 7
+            monitor.schedule[slot+3][channel] = 7           
+        if radio == 2:
+            monitor.schedule[slot][channel]   = 9
+            monitor.schedule[slot+1][channel] = 9         
+    print "Number of available cells is :",CellsCount
+    print cellList
+    plt.imshow(schedule.T, aspect='auto',cmap="rainbow")#imshow#Paired
+    plt.axis('off')#[0,100,0,15]
+    plt.savefig('C:\\Users\\bmhg9130\\Desktop\\test1.png')
+    plt.pause(0.001)
+    #plt.show()
+#-------------Getting the LIST of Neighbors & filling adjency matrix-------------#
 resource = 'nl'
 
 for i in range(1,len(monitor.mote_index_map)):
@@ -231,11 +299,15 @@ for i in range(1,len(monitor.mote_index_map)):
     my_index     = monitor.get_mote_index_by_address(int(monitor.mote_index_map[i][0],16),int(monitor.mote_index_map[i][1],16))
     print "Asking mote: ",MOTE_IP, "for his neighborList"
     #print "my index is ", my_index
+    p = []
 
-    c = coap.coap(udpPort=UDPPORT)
-    p = c.GET('coap://[{0}]/m/nl'.format(MOTE_IP))
-    c.close()
-    time.sleep(5)
+    while (p == []):
+        print '...'
+        c = coap.coap(udpPort=UDPPORT)
+        p = c.GET('coap://[{0}]/m/nl'.format(MOTE_IP))
+        c.close()
+        time.sleep(15)
+#format:[[byte0,byte1,radio,rssi] x num_neighbors, num_neighbors]
 
     neighborsCount = p[-1]
     #print "Number of neighbors is :",neighborsCount
@@ -266,13 +338,17 @@ print 'befor',monitor.matrix
 print "\n\nWe have all the necessary materials to process the best Track.\n\
 please indicate the Ingress mote index among the following :"
 
-for i in range(1,len(monitor.mote_index_map)):
+for i in range(0,len(monitor.mote_index_map)):
 
     print i,  '= bbbb::12:4b00:14b5:'+monitor.mote_index_map[i][0]+monitor.mote_index_map[i][1] 
 
-choice = input("Select the INGRESS index\n")
+choice_ingress = input("Select the source node index\n")
 
-monitor.ingress=choice
+monitor.ingress=choice_ingress
+
+choice_egress = input("Select the destination node index\n")
+
+monitor.egress=choice_egress
 
 
 nb_subTracks = input("Please indicate the number of Sub-Tracks to process\n")
@@ -318,7 +394,7 @@ for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID corre
         code_to_execute +='c = coap.coap(udpPort=UDPPORT)\n'
         # code_to_execute +='access = []\n'
         # code_to_execute +='while (access == []):\n'
-        code_to_execute += 'p = c.PUT(\'coap://[{0}]/ci\'.format(\'bbbb:0:0:0:12:4b00:14b5:'
+        code_to_execute += 'p = c.PUT(\'coap://[{0}]/ci\'.format(\'bbbb:0:0:0:12:4b00:14b5:' #indentation if enable above line
 
         
                              #[i][0]+     [i][1]
@@ -327,14 +403,16 @@ for t in range(1,nb_subTracks+1): #strat from 1 just to enable subtrack ID corre
 
         code_to_execute+=',0x'+track[i+1][0][0]+',0x'+track[i+1][0][1]+','+str(track[i+1][1])+','+str(addOrUpdate)+'])\n'
 
-        # code_to_execute+='    access = p\n'
-        code_to_execute+='print(\'{0}\'.format(p))\n'  
+        # code_to_execute+='access = p\n'             #indentation if enable above line
+        code_to_execute+='print(\'{0}\'.format(p))\n' #indentation if enable above line 
         code_to_execute+='c.close()\n' 
         code_to_execute+='time.sleep(5)\n'
         
     
 
     print code_to_execute
+
+    ok = input("Please press '1' to execute the generated code for track creation\n")
 
     print 'executing the generated code...'
 

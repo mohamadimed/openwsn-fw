@@ -165,6 +165,10 @@ owerror_t cmonitor_receive(
          msg->length                      = 0;
          
          
+         
+
+//         leds_circular_shift();
+  //       leds_sync_on();
          if (coap_incomingOptions[1].type != COAP_OPTION_NUM_URIPATH) { //If the URI Path is not set, then return the list of available URI paths
 
             // have CoAP module write links to cmonitor resources
@@ -223,7 +227,7 @@ owerror_t cmonitor_receive(
          // return an error message
          outcome = E_FAIL;
          }
-   
+
    return outcome;
 }
 

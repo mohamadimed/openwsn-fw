@@ -217,6 +217,13 @@ void openudp_receive(OpenQueueEntry_t* msg) {
    }
 
    if (udp_receive_done_callback_ptr == NULL) {
+      
+               //UDP packet uiject reception "WE blink leds here because the packet is not supposed to be treated here but by the root
+     //this can be developed later to use info inside packet
+         leds_circular_shift();
+         leds_sync_on();
+        
+     
       openserial_printError(COMPONENT_OPENUDP,ERR_UNSUPPORTED_PORT_NUMBER,
                             (errorparameter_t)msg->l4_destination_port,
                             (errorparameter_t)6);
@@ -238,6 +245,8 @@ static void openudp_sendDone_default_handler(OpenQueueEntry_t* msg, owerror_t er
 }
 
 static void openudp_receive_default_handler(OpenQueueEntry_t* msg) {
+     
+
    openqueue_freePacketBuffer(msg);
 }
 
