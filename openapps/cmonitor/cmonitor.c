@@ -351,8 +351,8 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           INTERRUPT_DECLARATION();
           DISABLE_INTERRUPTS();
                                             //MAX payload is 56
-          for(i=0;i<MAXACTIVESLOTS;i++) {
-          if(schedule_vars.scheduleBuf[i].type          != CELLTYPE_OFF)  
+          for(i=0;i<MAXACTIVESLOTS;i++) {                                       //to avoid sending already known information (shared slots we know where it's scheduled)
+          if((schedule_vars.scheduleBuf[i].type          != CELLTYPE_OFF)  && !( (schedule_vars.scheduleBuf[i].slotOffset == 0 && schedule_vars.scheduleBuf[i].channelOffset == 0)||(schedule_vars.scheduleBuf[i].slotOffset == 2 && schedule_vars.scheduleBuf[i].channelOffset == 0) || (schedule_vars.scheduleBuf[i].slotOffset == 6 && schedule_vars.scheduleBuf[i].channelOffset == 0)))
           
           //CELLTYPE_TXRX, CELLTYPE_RX, CELLTYPE_TX, CELLTYPE_OFF
            // schedule_vars.scheduleBuf[i].shared                         &&

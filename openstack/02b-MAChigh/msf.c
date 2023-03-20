@@ -488,7 +488,7 @@ void msf_housekeeping(void){
         return;
     }
     // WRONG: this needs to be done the opposite way: it clears nonParent when and only when cells are negotiated with the new parent
-    if (schedule_hasNegotiatedTxCellToNonParent(
+  /*  if (schedule_hasNegotiatedTxCellToNonParent(
           &parentNeighbor, 
           &parentNeighborRadio, 
           &nonParentNeighbor, 
@@ -512,7 +512,7 @@ void msf_housekeeping(void){
           );
           // will remove this for now to have the node proceed with cell addition even if cell clearing is not successful.
           return;
-    }
+    }*/
           //This is the original instruction has been commented and replaced by the one below
   /*      if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_TX)==0){
         msf_vars.needAddTx = TRUE;
@@ -526,16 +526,17 @@ void msf_housekeeping(void){
         
         msf_vars.needAddTx = TRUE;
         msf_trigger6pAdd();
-        //msf_vars.needAddTx = FALSE; //ADD this to get RX negociated cell on creating TX
+        
+        msf_vars.needAddTx = FALSE; //ADD this to get RX negociated cell on creating TX
         return;
-    }/*
+    }
         //ADD this to get RX negociated cell on creating TX
         if (schedule_getNumberOfNegotiatedCells(&parentNeighbor, parentNeighborRadio, CELLTYPE_RX)==0){
         msf_vars.needAddRx = TRUE;
         msf_trigger6pAdd();
         msf_vars.needAddRx = FALSE;
         return;
-    }*/
+    } //To make this work after it's enabeling we should stop deleting TX cells for not parent nodes to make it work (CLEAR command in MSFHouseKeeping) L:490
 
     if (msf_vars.waitretry){
         return;

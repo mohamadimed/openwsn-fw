@@ -220,9 +220,9 @@ void openudp_receive(OpenQueueEntry_t* msg) {
       
                //UDP packet uiject reception "WE blink leds here because the packet is not supposed to be treated here but by the root
      //this can be developed later to use info inside packet
-         leds_circular_shift();
-         leds_sync_on();
-        
+         //leds_circular_shift();
+         //leds_sync_on();
+        leds_debug_toggle();
      
       openserial_printError(COMPONENT_OPENUDP,ERR_UNSUPPORTED_PORT_NUMBER,
                             (errorparameter_t)msg->l4_destination_port,
