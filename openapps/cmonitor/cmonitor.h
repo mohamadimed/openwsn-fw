@@ -16,7 +16,7 @@
 
 typedef enum{
     NEIGHBORS_COUNT,
-    DAGRANK,
+    ROUTE_LIST,
     PREFERRED_PARENT,
     NEIGHBORS_LIST,
     CELL_LIST

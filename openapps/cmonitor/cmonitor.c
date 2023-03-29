@@ -20,7 +20,7 @@
 
 const uint8_t cmonitor_path0[] = "m";
 const uint8_t cmonitor_nighborsCount_path1[]      = "nc";
-const uint8_t cmonitor_DAGRank_path1[]      = "dr";
+const uint8_t cmonitor_routeList_path1[]      = "rl";
 const uint8_t cmonitor_preferredParent_path1[]         = "pr"; //here we return parent@ (last 2 Bytes), parent radio
 const uint8_t cmonitor_nighborsList_path1[]         = "nl"; //here we return list of neighbors@ (last 2 Bytes), neighbors radio, and neighbors RSSI [@,radio,RSSI] x neighborsCount
 const uint8_t cmonitor_cellList_path1[]         = "cl"; //here we return parent@ (last 2 Bytes), parent radio
@@ -105,9 +105,9 @@ void cmonitor_register(
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_nighborsCount_path1)-1;
          cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_nighborsCount_path1);
          break;
-       case DAGRANK:
-         cmonitor_resource->desc.path1len   = sizeof(cmonitor_DAGRank_path1)-1;
-         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_DAGRank_path1);
+       case ROUTE_LIST:
+         cmonitor_resource->desc.path1len   = sizeof(cmonitor_routeList_path1)-1;
+         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_routeList_path1);
          break;
       case PREFERRED_PARENT:
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_preferredParent_path1)-1;
@@ -291,12 +291,24 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           break; 
           
           
-          case DAGRANK:       
+          case ROUTE_LIST:       
+            
           //Return my DAGRank
           packetfunctions_reserveHeaderSize(msg,sizeof(uint16_t));
           MyDAGRANK = icmpv6rpl_getMyDAGrank(); 
           msg->payload[1] = (uint8_t)((MyDAGRANK & 0xff00) >> 8);
           msg->payload[0] = (uint8_t)( MyDAGRANK & 0x00ff);
+          
+         packetfunctions_reserveHeaderSize(msg,3*sizeof(uint8_t));
+
+         foundNeighbor = icmpv6rpl_getPreferredParentKey(&parentNeighbor,&parrent_radio); //retrive parent address and radio
+         if (foundNeighbor)
+         {
+         msg->payload[2] = parrent_radio;
+         msg->payload[1] = parentNeighbor.addr_64b[7];
+         msg->payload[0] = parentNeighbor.addr_64b[6];
+         }
+          
           break;
           
           
