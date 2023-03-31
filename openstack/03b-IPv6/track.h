@@ -1,6 +1,6 @@
 #ifndef __TRACK_H
 #define __TRACK_H
-
+#include "schedule.h"
 /**
 \addtogroup IPv6
 \{
@@ -23,8 +23,9 @@ typedef struct {
    bool                 is_egress;
    uint8_t              bundle_length;
    open_addr_t          source_addr;
-   open_addr_t          track_parent_addr;
-   cellRadioSetting_t   track_parent_cellRadioSetting;
+   slotinfo_element_t   cell_info;
+   //open_addr_t          track_parent_addr;
+   //cellRadioSetting_t   track_parent_cellRadioSetting;
 } subtrack_t;
 
 typedef struct {

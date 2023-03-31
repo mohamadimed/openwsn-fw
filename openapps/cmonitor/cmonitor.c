@@ -19,9 +19,9 @@
 //=========================== defines =========================================
 
 const uint8_t cmonitor_path0[] = "m";
-const uint8_t cmonitor_nighborsCount_path1[]      = "nc";
-const uint8_t cmonitor_routeList_path1[]      = "rl";
-const uint8_t cmonitor_preferredParent_path1[]         = "pr"; //here we return parent@ (last 2 Bytes), parent radio
+const uint8_t cmonitor_trackList_path1[]      = "tl"; //here we return TrackID, owner@
+const uint8_t cmonitor_routeList_path1[]      = "rl";  //here we return parent@ (last 2 Bytes), parent radio, DAGRank (2 bytes)
+const uint8_t cmonitor_numTics_path1[]         = "nt"; //here we return parent@ (last 2 Bytes), parent radio
 const uint8_t cmonitor_nighborsList_path1[]         = "nl"; //here we return list of neighbors@ (last 2 Bytes), neighbors radio, and neighbors RSSI [@,radio,RSSI] x neighborsCount
 const uint8_t cmonitor_cellList_path1[]         = "cl"; //here we return parent@ (last 2 Bytes), parent radio
 //=========================== variables =======================================
@@ -101,17 +101,17 @@ void cmonitor_register(
    cmonitor_resource->desc.path0len         = sizeof(cmonitor_path0)-1;
    cmonitor_resource->desc.path0val         = (uint8_t*)(&cmonitor_path0);
    switch (id) {
-      case NEIGHBORS_COUNT:
-         cmonitor_resource->desc.path1len   = sizeof(cmonitor_nighborsCount_path1)-1;
-         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_nighborsCount_path1);
+      case TRACK_LIST:
+         cmonitor_resource->desc.path1len   = sizeof(cmonitor_trackList_path1)-1;
+         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_trackList_path1);
          break;
        case ROUTE_LIST:
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_routeList_path1)-1;
          cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_routeList_path1);
          break;
-      case PREFERRED_PARENT:
-         cmonitor_resource->desc.path1len   = sizeof(cmonitor_preferredParent_path1)-1;
-         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_preferredParent_path1);
+      case NUM_TICS:
+         cmonitor_resource->desc.path1len   = sizeof(cmonitor_numTics_path1)-1;
+         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_numTics_path1);
          break;
       case NEIGHBORS_LIST:
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_nighborsList_path1)-1;
@@ -257,7 +257,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
     uint32_t             ticksTx_2;
     uint32_t             ticksOn_2;
     uint32_t             ticksInTotal;
-    uint8_t              current_cell_radio_setting;
+    //uint8_t              current_cell_radio_setting;
     uint8_t              parrent_radio;
     uint8_t              neighbor_radio;
     uint8_t              neighbor_counter;
@@ -282,12 +282,8 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[1] = oqs.maxBuffSize;
           msg->payload[0] = oqs.minBuffSize;*/
          
-          case NEIGHBORS_COUNT:       
-          //Num Neighbors        
-      
-          packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
-          numNeighbors = neighbors_getNumNeighbors();
-          msg->payload[0] = numNeighbors;
+          case TRACK_LIST:       
+         
           break; 
           
           
@@ -311,20 +307,10 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           
           break;
           
-          
-        case PREFERRED_PARENT:
-          //Get the preferred parent( returning last two bytes of his address and the radio)
-         packetfunctions_reserveHeaderSize(msg,3*sizeof(uint8_t));
-
-         foundNeighbor = icmpv6rpl_getPreferredParentKey(&parentNeighbor,&parrent_radio); //retrive parent address and radio
-         if (foundNeighbor)
-         {
-         msg->payload[2] = parrent_radio;
-         msg->payload[1] = parentNeighbor.addr_64b[7];
-         msg->payload[0] = parentNeighbor.addr_64b[6];
-         }
-         
+              
          case NEIGHBORS_LIST:
+           
+   
          //returning list of neighbors for each node:  liste:[@(last 2-bytes), radio, RSSI] + [num_neighbors] 
           packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
           numNeighbors = neighbors_getNumNeighbors();
@@ -348,6 +334,9 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
               }//END loop-for neighbors check
          
          break;
+         
+         
+         
          case CELL_LIST:
          //returning list of celss for each [num_cells]+ liste:[slot,channel, is_hard,linkoption,@(last 2-bytes),cellRadioSetting]
 
@@ -389,6 +378,82 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           ENABLE_INTERRUPTS();
 
           break;
+          
+          
+         case NUM_TICS:
+
+                // duty cycle info
+          ieee154e_getRadioTicsInfo(
+                                     &ticksTx, 
+                                     &ticksOn,
+                                     &ticksTx_0, 
+                                     &ticksOn_0,
+                                     &ticksTx_1, 
+                                     &ticksOn_1,
+                                     &ticksTx_2, 
+                                     &ticksOn_2,
+                                     &ticksInTotal
+                                     );
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksOn & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksOn & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksOn & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksOn & 0x000000ff);
+
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksTx & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksTx & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksTx & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksTx & 0x000000ff);
+
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksOn_0 & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksOn_0 & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksOn_0 & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksOn_0 & 0x000000ff);
+
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksTx_0 & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksTx_0 & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksTx_0 & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksTx_0 & 0x000000ff);
+          
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksOn_1 & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksOn_1 & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksOn_1 & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksOn_1 & 0x000000ff);
+
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksTx_1 & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksTx_1 & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksTx_1 & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksTx_1 & 0x000000ff);
+          
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksOn_2 & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksOn_2 & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksOn_2 & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksOn_2 & 0x000000ff);
+
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksTx_2 & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksTx_2 & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksTx_2 & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksTx_2 & 0x000000ff);
+          
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksInTotal & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksInTotal & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksInTotal & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksInTotal & 0x000000ff);
+          // resettin mac stats
+          //ieee154e_resetStats();
+         
+         break;
+          
+          
+          
         default:
          break; 
           
@@ -397,73 +462,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
 /*
             
        
-         // duty cycle info
-    ieee154e_getRadioTicsInfo(
-                               &ticksTx, 
-                               &ticksOn,
-                               &ticksTx_0, 
-                               &ticksOn_0,
-                               &ticksTx_1, 
-                               &ticksOn_1,
-                               &ticksTx_2, 
-                               &ticksOn_2,
-                               &ticksInTotal
-                               );
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksOn & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksOn & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksOn & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksOn & 0x000000ff);
-
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksTx & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksTx & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksTx & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksTx & 0x000000ff);
-
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksOn_0 & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksOn_0 & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksOn_0 & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksOn_0 & 0x000000ff);
-
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksTx_0 & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksTx_0 & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksTx_0 & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksTx_0 & 0x000000ff);
-    
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksOn_1 & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksOn_1 & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksOn_1 & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksOn_1 & 0x000000ff);
-
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksTx_1 & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksTx_1 & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksTx_1 & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksTx_1 & 0x000000ff);
-    
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksOn_2 & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksOn_2 & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksOn_2 & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksOn_2 & 0x000000ff);
-
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksTx_2 & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksTx_2 & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksTx_2 & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksTx_2 & 0x000000ff);
-    
-    packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
-    msg->payload[3] = (uint8_t)((ticksInTotal & 0xff000000) >> 24);
-    msg->payload[2] = (uint8_t)((ticksInTotal & 0x00ff0000) >> 16);
-    msg->payload[1] = (uint8_t)((ticksInTotal & 0x0000ff00) >> 8);
-    msg->payload[0] = (uint8_t)( ticksInTotal & 0x000000ff);
-    // resettin mac stats
-    //ieee154e_resetStats();
+        
 */
          
          
@@ -508,7 +507,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
 \param[in] error The outcome of sending it.
 */
 void cmonitor_sendDone(OpenQueueEntry_t* msg, owerror_t error) {
-  {debugpins_frame_toggle();debugpins_frame_toggle();}
+  //{debugpins_frame_toggle();debugpins_frame_toggle();}
    openqueue_freePacketBuffer(msg);
 }
 

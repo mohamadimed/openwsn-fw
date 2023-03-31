@@ -95,8 +95,8 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
       parent_addr_byte0     = msg->payload[7];
       parent_addr_byte1     = msg->payload[8];
       parent_radio          = msg->payload[9];
-      slotoffset            = msg->payload[11];
-      channeloffset         = msg->payload[12];
+      slotoffset            = msg->payload[10];
+      channeloffset         = msg->payload[11];
       //fill parent address with first 48 bytes
        parent=track_getParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
 
@@ -133,7 +133,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                         
                track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio;
 
                return 1; 
                
@@ -167,7 +167,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                         track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                         
                         track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
-                        track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio;
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio;
                       
                         return 1;
                         }
@@ -191,7 +191,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                                  track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                                  
                                  track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
-                                 track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) parent_radio; 
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio; 
                                  return 1;   }
 
                      
@@ -266,16 +266,16 @@ if (ieee154e_isSynch() == FALSE) {
                track_vars.track_list[trackID].subtrack_list[subTrackID].source_addr.addr_64b[7] = 0;
                
                         
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[0] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[1] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[2] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[3] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[4] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[5] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[6] = 0;
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[7] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[0] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[1] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[2] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[3] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[4] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[5] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[6] = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[7] = 0;
 
-               track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting = (cellRadioSetting_t) 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) 0;
                //let this line to final be cause if we set trickID to 0 we can't reach the above vars to reset tem
                if( track_vars.track_list[trackID].num_subtracks == 0) //here to say if we are ingress, don't set track_ID to 0 until we are in last lap od subtrack suppresion
                                                                       {track_vars.nb_tracks--;
@@ -398,8 +398,8 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
    uint8_t               bundle;
    owerror_t             outcome;
 
-   neighbor      = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr;
-   neighborRadio = track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_cellRadioSetting;
+   neighbor      = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address;
+   neighborRadio = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting;
    bundle      = track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length;
 
    /*TBD bundle loop*/
@@ -484,15 +484,15 @@ bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8
 
 /*We use this function to generate the EUI-64 address of a given node based on its EUI-16, this is for shorten the sent packets size since now we lean on CoAP to install tracks*/
 void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte0, uint8_t byte1)
-{  track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.type = ADDR_64B;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[6] = byte0;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[7] = byte1;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[0] = 0x00;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[1] = 0x12;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[2] = 0x4b;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[3] = 0x00;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[4] = 0x14;
-   track_vars.track_list[trackID].subtrack_list[subTrackID].track_parent_addr.addr_64b[5] = 0xb5;
+{  track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.type = ADDR_64B;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[6] = byte0;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[7] = byte1;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[0] = 0x00;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[1] = 0x12;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[2] = 0x4b;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[3] = 0x00;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[4] = 0x14;
+   track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[5] = 0xb5;
 
 }
 
@@ -555,7 +555,7 @@ open_addr_t* track_getParentAddr64(uint8_t trackID)
 
       {  for(j=1;j<=MAX_NUM_SUBTRACKS;j++)
             if(track_vars.track_list[i].subtrack_list[j].subtrack_id == j){
-            parent_address = &(track_vars.track_list[i].subtrack_list[j].track_parent_addr);
+            parent_address = &(track_vars.track_list[i].subtrack_list[j].cell_info.address);
             break;}
       }
 
@@ -575,7 +575,7 @@ cellRadioSetting_t track_getParentRadio(uint8_t trackID) //This function as it i
 
       {  for(j=1;j<=MAX_NUM_SUBTRACKS;j++)
             if(track_vars.track_list[i].subtrack_list[j].subtrack_id == j){
-            parent_cellRadioSetting = (track_vars.track_list[i].subtrack_list[j].track_parent_cellRadioSetting);
+            parent_cellRadioSetting = (track_vars.track_list[i].subtrack_list[j].cell_info.cellRadioSetting);
             break;}
       }
 

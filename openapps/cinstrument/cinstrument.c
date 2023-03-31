@@ -91,10 +91,10 @@ owerror_t cinstrument_receive(OpenQueueEntry_t* msg,
          // add a slot
          
         
-         if (msg->payload[10] == 0x01)//means add track
+        // if (msg->payload[10] == 0x01)//means add track
          { return_value = track_installOrUpdateTrack(msg); }
-         else 
-           return_value = track_deleteTrack(msg);
+        // else 
+           //return_value = track_deleteTrack(msg);
          msg->payload                  = &(msg->packet[127]);
          msg->length                   = 0;
          
@@ -123,7 +123,7 @@ owerror_t cinstrument_receive(OpenQueueEntry_t* msg,
          msg->payload[0] =  return_value;
          
          // set the CoAP header
-         coap_header->Code             = COAP_CODE_RESP_CHANGED;
+         coap_header->Code             = COAP_CODE_RESP_DELETED;//COAP_CODE_RESP_CHANGED;
          
          if (return_value) outcome = E_SUCCESS; else outcome = E_FAIL;
          

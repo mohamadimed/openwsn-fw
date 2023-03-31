@@ -15,9 +15,9 @@
 //=========================== typedef =========================================
 
 typedef enum{
-    NEIGHBORS_COUNT,
+    TRACK_LIST,
     ROUTE_LIST,
-    PREFERRED_PARENT,
+    NUM_TICS,
     NEIGHBORS_LIST,
     CELL_LIST
 } metrics_t;
