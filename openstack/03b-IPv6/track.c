@@ -20,7 +20,7 @@ bool track_getSubTrackExistenceByID(uint8_t TrackID, uint8_t subTrackID);
 bool track_getIfIamIngress(uint8_t byte0, uint8_t byte1);
 //bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
 bool track_reserveTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle, uint8_t slotoffset, uint8_t channeloffset);
-bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle);
+bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle,uint8_t slotoffset, uint8_t channeloffset);
 bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID);
 void track_setParentEui64from16(uint8_t trackID, uint8_t subTrackID, uint8_t byte0, uint8_t byte1);
 void track_setSourceEui64from16(uint8_t trackID, uint8_t subTrackID,uint8_t byte0, uint8_t byte1);
@@ -132,9 +132,16 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                //setting the source addr
                track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                         
+               //setting the cell info: parent addr, radio, cellType,shared,slot,channel,isAuto,isHard
+
                track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
                track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio;
-
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.link_type = CELLOPTIONS_TX; //because in each node we target, it negociates with its neighbor so it gonna have an TXcell for his next hop addr in track, (whats important is ts,ch to proceed for supr or update)
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.shared = FALSE; //it's a dedicated cell
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.slotOffset = slotoffset;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.channelOffset = channeloffset;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isAutoCell = FALSE; //it is not an auto cell, created manually by pce
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isHardCell = TRUE; //Yes, created by pce for track
                return 1; 
                
                }
@@ -142,7 +149,7 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
          }
 
        else { 
-               //update Track if it already exists [NEED TO REALLOCATE HARD CELLS]   /*TBD*/
+               //update Track if it already exists [NEED TO REALLOCATE HARD CELLS]   
                
                if(!track_getSubTrackExistenceByID(trackID,subTrackID)){ // Here the track ID exists , but not the sub track, so add the new subtrack (its an ingress point may have several subtracks)
                   if(track_vars.track_list[trackID].num_subtracks >= MAX_NUM_SUBTRACKS || subTrackID > MAX_NUM_SUBTRACKS)
@@ -165,17 +172,24 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                         
                         //setting the source addr
                         track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
-                        
+
+                        //setting the cell info: parent addr, radio, cellType,shared,slot,channel,isAuto,isHard
+
                         track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
                         track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio;
-                      
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.link_type = CELLOPTIONS_TX; //because in each node we target, it negociates with its neighbor so it gonna have an TXcell for his next hop addr in track, (whats important is ts,ch to proceed for supr or update)
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.shared = FALSE; //it's a dedicated cell
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.slotOffset = slotoffset;
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.channelOffset = channeloffset;
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isAutoCell = FALSE; //it is not an auto cell, created manually by pce
+                        track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isHardCell = TRUE; //Yes, created by pce for track
                         return 1;
                         }
                         else return 0;
                } else {
                         //update sub track if it already exists       //here we should have the track ID and sub track ID----> an update is needed
                                            
-                         if(!track_realocateTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length)) return 0;
+                         if(!track_realocateTrackCells(parent,parent_radio,trackID,subTrackID,bundle_length,slotoffset,channeloffset)) return 0;
                                  else {
                                  //get SubTrack info
                                  track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = subTrackID;
@@ -190,8 +204,16 @@ owerror_t  track_installOrUpdateTrack(OpenQueueEntry_t* msg){
                                  //setting the source addr
                                  track_setSourceEui64from16(trackID,subTrackID,ingress_addr_byte0,ingress_addr_byte1);
                                  
+                                 //setting the cell info: parent addr, radio, cellType,shared,slot,channel,isAuto,isHard
+
                                  track_setParentEui64from16(trackID,subTrackID,parent_addr_byte0,parent_addr_byte1);
-                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio; 
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) parent_radio;
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.link_type = CELLOPTIONS_TX; //because in each node we target, it negociates with its neighbor so it gonna have an TXcell for his next hop addr in track, (whats important is ts,ch to proceed for supr or update)
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.shared = FALSE; //it's a dedicated cell
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.slotOffset = slotoffset;
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.channelOffset = channeloffset;
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isAutoCell = FALSE; //it is not an auto cell, created manually by pce
+                                 track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isHardCell = TRUE; //Yes, created by pce for track
                                  return 1;   }
 
                      
@@ -248,11 +270,11 @@ if (ieee154e_isSynch() == FALSE) {
                              
                track_vars.track_list[trackID].subtrack_list[subTrackID].subtrack_id = 0;
                track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length = 0;
-               //Check and get if we are Ingress point
-               if (idmanager_getIsDAGroot()) 
+               
+                
                track_vars.track_list[trackID].subtrack_list[subTrackID].is_egress = FALSE;
-               //Check and get if we are Egress point 
-               if(track_getIfIamIngress(msg->payload[2],msg->payload[3]))
+                
+               
                track_vars.track_list[trackID].subtrack_list[subTrackID].is_ingress = FALSE;
                
                
@@ -276,6 +298,10 @@ if (ieee154e_isSynch() == FALSE) {
                track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address.addr_64b[7] = 0;
 
                track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting = (cellRadioSetting_t) 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.slotOffset = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.channelOffset = 0;
+               track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.isHardCell = 0;
+
                //let this line to final be cause if we set trickID to 0 we can't reach the above vars to reset tem
                if( track_vars.track_list[trackID].num_subtracks == 0) //here to say if we are ingress, don't set track_ID to 0 until we are in last lap od subtrack suppresion
                                                                       {track_vars.nb_tracks--;
@@ -394,20 +420,30 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
    cellInfo_ht           celllist_delete[CELLLIST_MAX_LEN];
    open_addr_t           neighbor;
    cellRadioSetting_t    neighborRadio;
-   uint8_t               cellOptions;
-   uint8_t               bundle;
+   uint8_t               cellOptions, slotoffset;
+   uint8_t               bundle, channeloffset;
    owerror_t             outcome;
 
    neighbor      = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.address;
    neighborRadio = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting;
    bundle      = track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length;
-
+   slotoffset = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.slotOffset;
+   channeloffset = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.channelOffset;
    /*TBD bundle loop*/
 
-      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,bundle, CELLTYPE_TX)==FALSE)
-            is_Deleted = FALSE;
+   //   if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,bundle, CELLTYPE_TX)==FALSE)
+   //         is_Deleted = FALSE;
                      
-      else  {
+   //   else  
+
+   //Like this the solution supports only bundle = 1
+            celllist_delete[0].slotoffset       = slotoffset;
+            celllist_delete[0].channeloffset    = channeloffset;
+            celllist_delete[0].cellRadioSetting = neighborRadio;
+            celllist_delete[0].isUsed           = TRUE;
+            
+
+      {
             cellOptions = CELLOPTIONS_TX;
             
                // call sixtop
@@ -433,7 +469,7 @@ bool track_deleteTrackCells(uint8_t trackID, uint8_t subTrackID)
 
 
 //#we must assume that the bundle should same when performing an update to ensure correct function, otherwise we must delete the track vars and create it all new
-bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle)
+bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8_t trackID, uint8_t subTrackID, uint8_t bundle, uint8_t slotoffset, uint8_t channeloffset)
 
 {  bool is_Reserved = FALSE;
    cellInfo_ht           celllist_add[CELLLIST_MAX_LEN];
@@ -443,8 +479,22 @@ bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8
 
       memset(celllist_delete, 0, CELLLIST_MAX_LEN*sizeof(cellInfo_ht));
       memset(celllist_add, 0, CELLLIST_MAX_LEN*sizeof(cellInfo_ht));
+
+   bundle      = track_vars.track_list[trackID].subtrack_list[subTrackID].bundle_length;
+   //get celllist to delete
+   celllist_delete[0].slotoffset       = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.slotOffset;
+   celllist_delete[0].channeloffset    = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.channelOffset;
+   celllist_delete[0].cellRadioSetting = track_vars.track_list[trackID].subtrack_list[subTrackID].cell_info.cellRadioSetting;
+   celllist_delete[0].isUsed           = TRUE;
+
+   //set celllist to add
+   celllist_add[0].slotoffset       = slotoffset;
+   celllist_add[0].channeloffset    = channeloffset;
+   celllist_add[0].cellRadioSetting = neighborRadio;
+   celllist_add[0].isUsed           = TRUE;
+
       
-      if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,bundle, CELLTYPE_TX) == FALSE)
+      /*if (msf_candidateRemoveCellList(celllist_delete,&neighbor,neighborRadio,bundle, CELLTYPE_TX) == FALSE)
         
             return is_Reserved;
             
@@ -452,10 +502,11 @@ bool track_realocateTrackCells(open_addr_t neighbor, uint8_t neighborRadio,uint8
             // failed to get cell list to add
            return is_Reserved;
         }
-
+*/
             
                      
-      else  {
+      //else  
+      {
             cellOptions = CELLOPTIONS_TX;
             cellOptions |= neighborRadio <<5;//0 <<5;//CELLRADIOSETTING_3 <<5;//neighborRadio <<5;
 
@@ -650,16 +701,23 @@ uint8_t track_getNbSubTracks(uint8_t trackID)
   return nb_subTracks;
 
 }   
+
+
+track_vars_t track_getTracks()
+{
+
+   return track_vars;
+}
             
 /*
     Payload format for Track creation. This packet should be created by 
      the PCE and sent to every concerned node in the mesh network
 
 
-  1 Byte      1 Byte       2 Bytes    2 Bytes    1Byte    2 Bytes        1 Byte      1 Byte
-+---------+------------+-----------+-----------+--------+-----------+------------+-----------+
-|Track ID |Sub_Track ID|Ingress adr|Egress adr |Bundle n|Parent adr |Parent radio|add 1/del 0|
-+---------+------------+-----------+-----------+--------+-----------+------------+-----------+
+  1 Byte      1 Byte       2 Bytes    2 Bytes    1Byte    2 Bytes        1 Byte      1 Byte     1 Byte
++---------+------------+-----------+-----------+--------+-----------+------------+-----------+-------------+
+|Track ID |Sub_Track ID|Ingress adr|Egress adr |Bundle n|Parent adr |Parent radio|slotoffset |Channeloffset|
++---------+------------+-----------+-----------+--------+-----------+------------+-----------+-------------+
 
 */
 

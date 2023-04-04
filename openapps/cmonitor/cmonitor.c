@@ -15,6 +15,7 @@
 #include "neighbors.h"
 #include "icmpv6rpl.h"
 #include "schedule.h"
+#include "track.h"
 
 //=========================== defines =========================================
 
@@ -283,7 +284,48 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[0] = oqs.minBuffSize;*/
          
           case TRACK_LIST:       
-         
+          
+          track_vars_t track_vars;
+          uint8_t c1,c2,nb_subTracks;
+          
+          track_vars = track_getTracks();
+          
+          if(track_vars.nb_tracks == 0)
+          {
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint8_t));
+              
+              msg->payload[0] = 0; //return 0 if no track is already created
+          } 
+          else 
+          {
+          for (c1=1;c1<=track_vars.nb_tracks;c1++)
+
+          if (track_vars.track_list[c1].track_id == c1){
+                  
+            nb_subTracks = track_vars.track_list[c1].num_subtracks;
+            
+            for (c2=1;c2<=nb_subTracks;c2++)
+              
+            { if (track_vars.track_list[c1].subtrack_list[c2].subtrack_id == c2)
+            {
+              packetfunctions_reserveHeaderSize(msg,10*sizeof(uint8_t));
+              
+              msg->payload[0] = track_vars.track_list[c1].track_id;
+              msg->payload[1] = track_vars.track_list[c1].subtrack_list[c2].source_addr.addr_64b[6];
+              msg->payload[2] = track_vars.track_list[c1].subtrack_list[c2].source_addr.addr_64b[7];
+              msg->payload[3] = track_vars.track_list[c1].subtrack_list[c2].is_ingress;
+              msg->payload[4] = track_vars.track_list[c1].subtrack_list[c2].is_egress;
+              msg->payload[5] = track_vars.track_list[c1].subtrack_list[c2].cell_info.slotOffset;
+              msg->payload[6] = track_vars.track_list[c1].subtrack_list[c2].cell_info.channelOffset;
+              msg->payload[7] = track_vars.track_list[c1].subtrack_list[c2].cell_info.address.addr_64b[6];
+              msg->payload[8] = track_vars.track_list[c1].subtrack_list[c2].cell_info.address.addr_64b[7];
+              msg->payload[9] = track_vars.track_list[c1].subtrack_list[c2].cell_info.cellRadioSetting;
+            
+            }
+           
+          }
+          } }//end else
+          
           break; 
           
           

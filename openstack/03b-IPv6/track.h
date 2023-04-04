@@ -58,7 +58,7 @@ bool track_getIsEgress(uint8_t trackID);
 bool track_getIsIngress(uint8_t trackID);
 uint8_t track_getNbSubTracks(uint8_t trackID);
 uint8_t track_getNbTracks();
-
+track_vars_t track_getTracks();
 
 /**
 \}
