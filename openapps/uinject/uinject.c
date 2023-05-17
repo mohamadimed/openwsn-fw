@@ -21,11 +21,27 @@
 
 uinject_vars_t uinject_vars;
 
+/*added by mm to enable collection of KPIs if we node is not the root*/
+
+uint16_t uinject_rx_counter; //counter for rceived uinject packets
+uint16_t uinject_tx_counter; //counter for sent uinject packets -egt it from packet payload
+uint32_t uinject_total_latency_counter; //calculated as the cumulative number of slots : diffrence ASN of received pkt - ASN of sent packet (of all packets)
+uint16_t uinject_diff_latency; //This hsould not be global var, it's here just for live watch
+uint16_t uinject_min_latency; //minimum latency recorded
+uint16_t uinject_max_latency; //maximum latency recorded
+asn_t source_asn,current_asn;
+uint8_t in_tx_mode = 0 ; //set this variable to 1 if we are programming a node to send uinject packets, otherwise set it to 0
+
+//next need to select destination node: root or address of the node to target
+
+
 static const uint8_t uinject_payload[]    = "uinject";
 /*static const uint8_t uinject_dst_addr[]   = {
    0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
 };*/
+
+
 //Added by mm
 static const uint8_t uinject_dst_addr[]   = {
    0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -50,15 +66,29 @@ void uinject_init(void) {
     openudp_register(&uinject_vars.desc);
 
     uinject_vars.period = UINJECT_PERIOD_MS;
+    
+    //added by mm; init kpi vars
+    uinject_rx_counter = 0;
+    uinject_tx_counter = 0;
+    uinject_total_latency_counter = 0;
+    uinject_min_latency = 999;
+    uinject_max_latency = 0;
+    
+    //added by mm: this periodic timer should be disabled in reception side when transmitting (point-to-point uinject pkt)
+    //Besides, the reception function of uinject pkt should be implemented so we can get and aggregate the metrics
+    
     // start periodic timer
-    uinject_vars.timerId = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_UDP);
+    if (in_tx_mode){
+ uinject_vars.timerId = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_UDP);
     opentimers_scheduleIn(
         uinject_vars.timerId,
         UINJECT_PERIOD_MS,
         TIME_MS,
         TIMER_PERIODIC,
         uinject_timer_cb
-    ); 
+          ); }
+
+
 }
 
 void uinject_sendDone(OpenQueueEntry_t* msg, owerror_t error) {
@@ -80,7 +110,63 @@ void uinject_sendDone(OpenQueueEntry_t* msg, owerror_t error) {
 }
 
 void uinject_receive(OpenQueueEntry_t* pkt) {
+   
+  //toggle Yellow LED to know if we received a uinjecxt packet
+    leds_debug_toggle();
+    
+    //declare asn to calculate slot differencies
+   //asn_t source_asn,current_asn;
 
+   
+   //diffrence between TX and RX: number of slots
+
+   uinject_diff_latency = 0;    
+   uinject_rx_counter++; //increment number of received uinject pkts
+    
+   
+   //Seems like if the destination is directly reacheable from the source without passing by the root, the packet size is 58 instead of 56.
+   //as a stupid solution just to make it work, I will try to adapt the treatment to the uinject payload length (which is not a definitive solution)
+   //for this I will use a condition and an offset to adapte it according to the need
+   
+   uint8_t offset;
+   
+   if(pkt->length == 56)
+     offset = 42; 
+      if(pkt->length == 58)
+     offset = 44;  
+     
+   
+   //update tx_counter 
+   
+   uinject_tx_counter =((pkt->payload[offset+5] & 0x00ff) + ((pkt->payload[offset+6] & 0x00ff)<<8)); //still to be defined which position in vector
+    
+    current_asn = pkt->l2_asn; //get asn on rx of uinjct pkt
+    
+
+    
+    //getting the ASN bytes from pkt to compare them with l2_asn as in parserdata.py
+    source_asn.bytes0and1 = pkt->payload[offset+1]<<8|pkt->payload[offset];  //((pkt->payload[42] & 0x00ff) + ((pkt->payload[43] & 0x00ff)<<8)); //regrouping bytes0and1 
+    source_asn.bytes2and3 = pkt->payload[offset+3]<<8|pkt->payload[offset+2];//((pkt->payload[44] & 0x00ff) + ((pkt->payload[45] & 0x00ff)<<8)); //regrouping bytes2and3 
+    source_asn.byte4 = (pkt->payload[offset+4] & 0x00ff); //regrouping bytes2and3 
+    
+                        
+   //process ASN diff to get number of slots
+     if(current_asn.byte4==source_asn.byte4) 
+    
+       uinject_diff_latency = 0x10000 * (current_asn.bytes2and3 - source_asn.bytes2and3) + (current_asn.bytes0and1 - source_asn.bytes0and1);
+       uinject_total_latency_counter = uinject_total_latency_counter + uinject_diff_latency;
+       
+       if(uinject_diff_latency < uinject_min_latency)
+       uinject_min_latency = uinject_diff_latency;
+       
+       if(uinject_diff_latency > uinject_max_latency )
+       uinject_max_latency = uinject_diff_latency;
+
+    //first send diff (current_asn-source_asn) and send it over coap to get the number and then calculate latency
+    //uinject_latency_counter += asn_diff;
+    
+    //at coap req: send total latencies & uniject rx counter & source counter; so on reception in python we calculate PDR based on counters, and average latency using total latencies and rx_counter
+    
     openqueue_freePacketBuffer(pkt);
 }
 
@@ -90,8 +176,8 @@ void uinject_timer_cb(opentimers_id_t id){
     // calling the task directly as the timer_cb function is executed in
     // task mode by opentimer already
     if(openrandom_get16b()<(0xffff/UINJECT_TRAFFIC_RATE)){
-              uinject_task_cb();//printf("IamHERE1\n");
-    }//printf("IamHERE2\n");
+              uinject_task_cb();
+    }
 }
 
 void uinject_task_cb(void) {
@@ -166,9 +252,10 @@ void uinject_task_cb(void) {
     memcpy(&pkt->payload[0],uinject_payload,sizeof(uinject_payload)-1);
 
     packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+    uinject_vars.counter++;
     pkt->payload[1] = (uint8_t)((uinject_vars.counter & 0xff00)>>8);
     pkt->payload[0] = (uint8_t)(uinject_vars.counter & 0x00ff);
-    uinject_vars.counter++;
+    
 
     packetfunctions_reserveHeaderSize(pkt,sizeof(asn_t));
     ieee154e_getAsn(asnArray);

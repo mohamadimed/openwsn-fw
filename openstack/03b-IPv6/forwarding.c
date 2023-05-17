@@ -389,7 +389,7 @@ void forwarding_receive(
             if (senderRank < icmpv6rpl_getMyDAGrank()) {
                 // loop detected
                 // set flag
-                rpl_option->flags |= R_FLAG;
+              //  rpl_option->flags |= R_FLAG;
                 // log error
                 openserial_printError(
                         COMPONENT_FORWARDING,

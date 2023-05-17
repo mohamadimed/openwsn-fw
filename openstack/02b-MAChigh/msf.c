@@ -548,7 +548,7 @@ void msf_housekeeping(void){
 
     memset(celllist_delete, 0, CELLLIST_MAX_LEN*sizeof(cellInfo_ht));
 
-    if (schedule_getCellsToBeRelocated(&parentNeighbor, parentNeighborRadio, celllist_delete)){
+   /* if (schedule_getCellsToBeRelocated(&parentNeighbor, parentNeighborRadio, celllist_delete)){
         if (msf_candidateAddCellList(celllist_add, NUMCELLS_MSF, parentNeighborRadio)==FALSE){
             // failed to get cell list to add
             return;
@@ -566,7 +566,7 @@ void msf_housekeeping(void){
             0,                        // list command maximum celllist (not used)
             FALSE                     //isHardCell? no, Realocate only soft cells
         );
-    }
+    }*/
 }
 // updated msf hashing function for TSPH
 // Mina Rady Dec 2020
