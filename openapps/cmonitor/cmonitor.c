@@ -16,15 +16,17 @@
 #include "icmpv6rpl.h"
 #include "schedule.h"
 #include "track.h"
+//#include "uinject.h"
 
 //=========================== defines =========================================
 
 const uint8_t cmonitor_path0[] = "m";
-const uint8_t cmonitor_trackList_path1[]      = "tl"; //here we return TrackID, owner@
-const uint8_t cmonitor_routeList_path1[]      = "rl";  //here we return parent@ (last 2 Bytes), parent radio, DAGRank (2 bytes)
-const uint8_t cmonitor_numTics_path1[]         = "nt"; //here we return parent@ (last 2 Bytes), parent radio
+const uint8_t cmonitor_trackList_path1[]      = "tl"; //here we return TrackID, owner@ 
+const uint8_t cmonitor_routeList_path1[]      = "rl";  //here we return parent@ (last 2 Bytes), parent radio, DAGRank (2 bytes) [route List]
+const uint8_t cmonitor_numTics_path1[]         = "nt"; //here we return parent@ (last 2 Bytes), parent radio [numTics]
 const uint8_t cmonitor_nighborsList_path1[]         = "nl"; //here we return list of neighbors@ (last 2 Bytes), neighbors radio, and neighbors RSSI [@,radio,RSSI] x neighborsCount
 const uint8_t cmonitor_cellList_path1[]         = "cl"; //here we return parent@ (last 2 Bytes), parent radio
+const uint8_t cmonitor_kpi_path1[]         = "kpi"; ////here we return KPIS, namely pdr and latency: []
 //=========================== variables =======================================
 
 cmonitor_vars_t cmonitor_vars;
@@ -121,6 +123,10 @@ void cmonitor_register(
       case CELL_LIST:
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_cellList_path1)-1;
          cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_cellList_path1);
+         break;
+      case KPI_LIST:
+         cmonitor_resource->desc.path1len   = sizeof(cmonitor_kpi_path1)-1;
+         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_kpi_path1);
          break;
       default:
          break;
@@ -262,7 +268,16 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
     uint8_t              parrent_radio;
     uint8_t              neighbor_radio;
     uint8_t              neighbor_counter;
-        
+    
+    //For Kpis if uinject receiver is not root
+    uint16_t uinject_rx_counter; 
+    uint16_t uinject_tx_counter; 
+    uint32_t uinject_total_latency_counter; 
+
+    uint16_t uinject_min_latency; 
+    uint16_t uinject_max_latency; 
+    
+    
          //=== prepare  CoAP response
          
         switch (id) {
@@ -442,6 +457,8 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[1] = (uint8_t)((ticksOn & 0x0000ff00) >> 8);
           msg->payload[0] = (uint8_t)( ticksOn & 0x000000ff);
 
+          //To process average duty cyle I dont need to send all details only On and total tics are needed
+          /*
           packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
           msg->payload[3] = (uint8_t)((ticksTx & 0xff000000) >> 24);
           msg->payload[2] = (uint8_t)((ticksTx & 0x00ff0000) >> 16);
@@ -483,7 +500,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[2] = (uint8_t)((ticksTx_2 & 0x00ff0000) >> 16);
           msg->payload[1] = (uint8_t)((ticksTx_2 & 0x0000ff00) >> 8);
           msg->payload[0] = (uint8_t)( ticksTx_2 & 0x000000ff);
-          
+          */
           packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
           msg->payload[3] = (uint8_t)((ticksInTotal & 0xff000000) >> 24);
           msg->payload[2] = (uint8_t)((ticksInTotal & 0x00ff0000) >> 16);
@@ -493,9 +510,51 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           //ieee154e_resetStats();
          
          break;
+         
+         case KPI_LIST:       
+                          //packet format:[nTx(16B),nRx(16B),totalLatency(32B),MinLatency(16B),MaxLatency(16B)]
+          //get Max recorded latency
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint16_t));
+          uinject_max_latency = uinject_get_max_latency(); 
+          msg->payload[1] = (uint8_t)((uinject_max_latency & 0xff00) >> 8);
+          msg->payload[0] = (uint8_t)( uinject_max_latency & 0x00ff);
+          
+          //get Min recorded latency
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint16_t));
+          uinject_min_latency = uinject_get_min_latency(); 
+          msg->payload[1] = (uint8_t)((uinject_min_latency & 0xff00) >> 8);
+          msg->payload[0] = (uint8_t)( uinject_min_latency & 0x00ff);
+          
+          //get total number of all recorded diff ASN
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          uinject_total_latency_counter = uinject_get_total_latency_counter();      
+          msg->payload[3] = (uint8_t)((uinject_total_latency_counter & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((uinject_total_latency_counter & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((uinject_total_latency_counter & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( uinject_total_latency_counter & 0x000000ff);
           
           
+          //get number of RX uinject packets
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint16_t));
+          uinject_rx_counter = uinject_get_NumRx(); 
+          msg->payload[1] = (uint8_t)((uinject_rx_counter & 0xff00) >> 8);
+          msg->payload[0] = (uint8_t)( uinject_rx_counter & 0x00ff);
           
+          //get number of TX uinject packets
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint16_t));
+          uinject_tx_counter = uinject_get_NumTx(); 
+          msg->payload[1] = (uint8_t)((uinject_tx_counter & 0xff00) >> 8);
+          msg->payload[0] = (uint8_t)( uinject_tx_counter & 0x00ff);
+          
+          
+          //reset the values after reporing the recodings
+          uinject_reset_total_latency_counter();
+          uinject_reset_max_latency();
+          uinject_reset_min_latency();
+          uinject_reset_NumTx();
+          uinject_reset_NumRx();
+          
+          break;
         default:
          break; 
           

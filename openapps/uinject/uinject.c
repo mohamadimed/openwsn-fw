@@ -30,10 +30,12 @@ uint16_t uinject_diff_latency; //This hsould not be global var, it's here just f
 uint16_t uinject_min_latency; //minimum latency recorded
 uint16_t uinject_max_latency; //maximum latency recorded
 asn_t source_asn,current_asn;
-uint8_t in_tx_mode = 0 ; //set this variable to 1 if we are programming a node to send uinject packets, otherwise set it to 0
+uint8_t in_tx_mode = 0 ; //set this variable to 1 if we are programming a node to send uinject packets, otherwise set it to 0 -- By default =0 and should be changed through cinstrument coap PUT
 
 //next need to select destination node: root or address of the node to target
 
+uint8_t byte0_dest = 0 ;
+uint8_t byte1_dest = 0 ;
 
 static const uint8_t uinject_payload[]    = "uinject";
 /*static const uint8_t uinject_dst_addr[]   = {
@@ -43,9 +45,9 @@ static const uint8_t uinject_payload[]    = "uinject";
 
 
 //Added by mm
-static const uint8_t uinject_dst_addr[]   = {
+uint8_t uinject_dst_addr[]   = {
    0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-   0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0xd3, 0x0f
+   0x00, 0x12, 0x4b, 0x00, 0x14, 0xb5, 0x00, 0x00
 };
 //=========================== prototypes ======================================
 
@@ -78,7 +80,7 @@ void uinject_init(void) {
     //Besides, the reception function of uinject pkt should be implemented so we can get and aggregate the metrics
     
     // start periodic timer
-    if (in_tx_mode){
+    {
  uinject_vars.timerId = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_UDP);
     opentimers_scheduleIn(
         uinject_vars.timerId,
@@ -176,7 +178,7 @@ void uinject_timer_cb(opentimers_id_t id){
     // calling the task directly as the timer_cb function is executed in
     // task mode by opentimer already
     if(openrandom_get16b()<(0xffff/UINJECT_TRAFFIC_RATE)){
-              uinject_task_cb();
+             if (in_tx_mode) uinject_task_cb();
     }
 }
 
@@ -380,4 +382,94 @@ void uinject_task_cb(void) {
 }
 
 
+/*-----------------Getters for KPIS------------------*/
+/*--These functions are meant to be run for uinject_reciever--*/
+
+//Get the number of TX uinject_packets sent from source
+uint16_t uinject_get_NumTx(void){
+
+return uinject_tx_counter;
+
+}
+ //Get the number of RX uinject_packets recieved by the destination           
+uint16_t uinject_get_NumRx(void){
+
+return uinject_rx_counter;
+
+}
+//Get the total latency counter: gives the cumulation of all recorded diffrencies between a source ASN and on reception ASN. this gives total number of diffrencies ASN,\
+should be divided by number of RX packets to get the average number of ASN diffrencies , to get latency multply it by 10 ms to get time in ms
+uint32_t uinject_get_total_latency_counter(void){
+
+return uinject_total_latency_counter;
+
+}
+
+//Get the minimum latency recorded (just for statistics)
+uint16_t uinject_get_min_latency(void){
+
+return uinject_min_latency;
+
+}
+//Get the maximum latency recorded (just for statistics)    
+uint16_t uinject_get_max_latency(void){
+
+return uinject_max_latency;
+
+}
+
+
+/*-----------------Setters for KPIS------------------*/
+/*--These functions are meant to be run for uinject_reciever--*/
+
+//Reset the number of TX uinject_packets sent from source
+void uinject_reset_NumTx(void){
+
+uinject_tx_counter =0 ;
+
+}
+ //reset the number of RX uinject_packets recieved by the destination           
+void uinject_reset_NumRx(void){
+
+uinject_rx_counter=0 ;
+
+}
+//reset the total latency counter
+void uinject_reset_total_latency_counter(void){
+
+uinject_total_latency_counter=0 ;
+
+}
+
+//reset the minimum latency recorded (just for statistics)
+void uinject_reset_min_latency(void){
+
+uinject_min_latency=0 ;
+
+}
+//reset the maximum latency recorded (just for statistics)    
+void uinject_reset_max_latency(void){
+
+uinject_max_latency=0 ;
+
+}
+
+
+/*--These functions are meant to be run for uinject_sender--*/
+//Trigger node to start sending uinject packets , so sert it in tx mode and specify the destination node byr the last 2-bytes of its address
+void uinject_start_sending(uint8_t byte0, uint8_t byte1){
+uinject_dst_addr[14] = byte0;
+uinject_dst_addr[15] = byte1;
+in_tx_mode = 1;
+
+}
+
+//Trigger node to stop sending uinject packets , so sert it in rx mode and reset counter
+void uinject_stop_sending(void){
+
+in_tx_mode = 0;
+
+//Reset uinject counter -->  reset the uinject_counter on asking node to stop sending uinject packets
+uinject_vars.counter = 0;
+}
 

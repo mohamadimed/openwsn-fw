@@ -92,6 +92,16 @@ owerror_t cinstrument_receive(OpenQueueEntry_t* msg,
          
         
         // if (msg->payload[10] == 0x01)//means add track
+        
+        //if msg->payload[0] ==  99 means start sending uinject msg,
+        //if msg->payload[0] ==  100 means stop sending uinject msg,
+        //otherwise it's a PUT request to create tracks.. this has been done to handle start/stop uinject using cinstrument without beeing obliged to create another instrument file juste for uinject. 
+        //99 and 100 are selected arbitrary because they are not supposed to be track IDs
+        
+        if (msg->payload[0] == 99) uinject_start_sending(msg->payload[1],msg->payload[2]);
+        else if (msg->payload[0] == 100) uinject_stop_sending();
+        //it is not 99 or 100 so it should be a PUT method for track creation
+        else
          { return_value = track_installOrUpdateTrack(msg); }
         // else 
            //return_value = track_deleteTrack(msg);

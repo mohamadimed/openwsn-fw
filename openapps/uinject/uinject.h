@@ -32,6 +32,22 @@ typedef struct {
 void uinject_init(void);
 void uinject_sendDone(OpenQueueEntry_t* msg, owerror_t error);
 void uinject_receive(OpenQueueEntry_t* msg);
+
+
+uint32_t uinject_get_total_latency_counter(void);
+uint16_t uinject_get_max_latency(void);
+uint16_t uinject_get_min_latency(void);
+uint16_t uinject_get_NumTx(void);
+uint16_t uinject_get_NumRx(void);
+
+void uinject_reset_total_latency_counter(void);
+void uinject_reset_max_latency(void);
+void uinject_reset_min_latency(void);
+void uinject_reset_NumTx(void);
+void uinject_reset_NumRx(void);
+
+void uinject_stop_sending(void);
+void uinject_start_sending(uint8_t byte0, uint8_t byte1);
 /**
 \}
 \}

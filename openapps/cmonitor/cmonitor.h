@@ -9,7 +9,7 @@
 */
 
 #include "opencoap.h"
-#define NBMETRICS 5
+#define NBMETRICS 6
 //=========================== define ==========================================
 
 //=========================== typedef =========================================
@@ -19,7 +19,8 @@ typedef enum{
     ROUTE_LIST,
     NUM_TICS,
     NEIGHBORS_LIST,
-    CELL_LIST
+    CELL_LIST,
+    KPI_LIST
 } metrics_t;
 
 typedef struct {

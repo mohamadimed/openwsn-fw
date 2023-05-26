@@ -727,14 +727,14 @@ void  neighbors_removeOld(void) {
                     ) {
                         
                       /*added by mm to delmete cell in removing unreachable neighbor*/
-                       if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_RX) == TRUE){
+                 /*      if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_RX) == TRUE){
                          
                         sixtop_removeCells(
                     0,
                     celllist_delete,
                     &(neighbors_vars.neighbors[i].addr_64b),
                      CELLTYPE_RX
-                      );}
+                      );}*/
                       
                      /* if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_TX) == TRUE){
                          
