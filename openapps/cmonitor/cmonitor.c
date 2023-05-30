@@ -27,6 +27,7 @@ const uint8_t cmonitor_numTics_path1[]         = "nt"; //here we return parent@ 
 const uint8_t cmonitor_nighborsList_path1[]         = "nl"; //here we return list of neighbors@ (last 2 Bytes), neighbors radio, and neighbors RSSI [@,radio,RSSI] x neighborsCount
 const uint8_t cmonitor_cellList_path1[]         = "cl"; //here we return parent@ (last 2 Bytes), parent radio
 const uint8_t cmonitor_kpi_path1[]         = "kpi"; ////here we return KPIS, namely pdr and latency: []
+const uint8_t cmonitor_numTicsKpi_path1[]         = "dc"; ////here we return numTics KPIS (duty cycle DC),return total tics and tics On
 //=========================== variables =======================================
 
 cmonitor_vars_t cmonitor_vars;
@@ -127,6 +128,10 @@ void cmonitor_register(
       case KPI_LIST:
          cmonitor_resource->desc.path1len   = sizeof(cmonitor_kpi_path1)-1;
          cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_kpi_path1);
+         break;
+         case NUM_TICS_KPI:
+         cmonitor_resource->desc.path1len   = sizeof(cmonitor_numTicsKpi_path1)-1;
+         cmonitor_resource->desc.path1val   = (uint8_t*)(&cmonitor_numTicsKpi_path1);
          break;
       default:
          break;
@@ -458,7 +463,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[0] = (uint8_t)( ticksOn & 0x000000ff);
 
           //To process average duty cyle I dont need to send all details only On and total tics are needed
-          /*
+          
           packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
           msg->payload[3] = (uint8_t)((ticksTx & 0xff000000) >> 24);
           msg->payload[2] = (uint8_t)((ticksTx & 0x00ff0000) >> 16);
@@ -500,7 +505,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           msg->payload[2] = (uint8_t)((ticksTx_2 & 0x00ff0000) >> 16);
           msg->payload[1] = (uint8_t)((ticksTx_2 & 0x0000ff00) >> 8);
           msg->payload[0] = (uint8_t)( ticksTx_2 & 0x000000ff);
-          */
+          
           packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
           msg->payload[3] = (uint8_t)((ticksInTotal & 0xff000000) >> 24);
           msg->payload[2] = (uint8_t)((ticksInTotal & 0x00ff0000) >> 16);
@@ -555,6 +560,40 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
           uinject_reset_NumRx();
           
           break;
+          
+          case NUM_TICS_KPI:
+
+                // duty cycle info
+          ieee154e_getRadioTicsInfo(
+                                     &ticksTx, 
+                                     &ticksOn,
+                                     &ticksTx_0, 
+                                     &ticksOn_0,
+                                     &ticksTx_1, 
+                                     &ticksOn_1,
+                                     &ticksTx_2, 
+                                     &ticksOn_2,
+                                     &ticksInTotal
+                                     );
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksOn & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksOn & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksOn & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksOn & 0x000000ff);
+
+          //To process average duty cyle I dont need to send all details only On and total tics are needed
+
+          packetfunctions_reserveHeaderSize(msg,sizeof(uint32_t));
+          msg->payload[3] = (uint8_t)((ticksInTotal & 0xff000000) >> 24);
+          msg->payload[2] = (uint8_t)((ticksInTotal & 0x00ff0000) >> 16);
+          msg->payload[1] = (uint8_t)((ticksInTotal & 0x0000ff00) >> 8);
+          msg->payload[0] = (uint8_t)( ticksInTotal & 0x000000ff);
+          // resettin mac stats
+          //ieee154e_resetStats();
+         
+         break;
+          
+          
         default:
          break; 
           

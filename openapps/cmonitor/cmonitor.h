@@ -20,6 +20,7 @@ typedef enum{
     NUM_TICS,
     NEIGHBORS_LIST,
     CELL_LIST,
+    NUM_TICS_KPI, //here tro rertun only Total tics and TicsOn for calcuating average dutycyle in experiment
     KPI_LIST
 } metrics_t;
 
