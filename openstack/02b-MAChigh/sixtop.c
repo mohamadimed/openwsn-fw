@@ -984,7 +984,15 @@ port_INLINE void sixtop_sendKA(void) {
     kaPkt->l2_securityLevel   = IEEE802154_SECURITY_LEVEL; // do not exchange KAs with
     kaPkt->l2_keyIdMode       = IEEE802154_SECURITY_KEYIDMODE;
     kaPkt->l2_keyIndex        = IEEE802154_security_getDataKeyIndex();
-
+  
+    //added by me to print wher we send a KA and print last byte of destination
+        openserial_printStatus(
+        STATUS_KAPERIOD,
+        (uint8_t*)&kaNeighAddr->addr_64b[7],
+        sizeof(uint8_t)
+    );
+    
+    
     // put in queue for MAC to handle
     sixtop_send_internal(kaPkt,FALSE);
 

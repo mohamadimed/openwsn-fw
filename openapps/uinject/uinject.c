@@ -444,7 +444,7 @@ uinject_total_latency_counter=0 ;
 //reset the minimum latency recorded (just for statistics)
 void uinject_reset_min_latency(void){
 
-uinject_min_latency=0 ;
+uinject_min_latency=999 ;
 
 }
 //reset the maximum latency recorded (just for statistics)    

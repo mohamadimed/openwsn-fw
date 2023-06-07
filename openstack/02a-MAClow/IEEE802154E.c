@@ -1025,6 +1025,8 @@ port_INLINE void activity_ti1ORri1(void) {
     if (ieee154e_vars.slotOffset==0) {
         debugpins_frame_toggle();
     }
+    
+    
 
     // desynchronize if needed
     if (idmanager_getIsDAGroot()==FALSE) {

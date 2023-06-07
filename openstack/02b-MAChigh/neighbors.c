@@ -693,11 +693,11 @@ void  neighbors_removeOld(void) {
     cellInfo_ht          celllist_delete[CELLLIST_MAX_LEN];
   if (!idmanager_getIsDAGroot())
     if ( 
-        icmpv6rpl_getPreferredParentEui64(&addressToWrite) == FALSE      /*||
+        icmpv6rpl_getPreferredParentEui64(&addressToWrite) == FALSE      ||
         (
            icmpv6rpl_getPreferredParentEui64(&addressToWrite)           &&
             schedule_hasAutonomousTxRxCellUnicast(&addressToWrite)== FALSE //This condition returns always false, because we can't have a TXRXCellUnicast for our parent, we only have a negociatedTXcell
-        )*/
+        )
     ) {
         return;
     }
@@ -727,14 +727,14 @@ void  neighbors_removeOld(void) {
                     ) {
                         
                       /*added by mm to delmete cell in removing unreachable neighbor*/
-                 /*      if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_RX) == TRUE){
+                       if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_RX) == TRUE){
                          
                         sixtop_removeCells(
                     0,
                     celllist_delete,
                     &(neighbors_vars.neighbors[i].addr_64b),
                      CELLTYPE_RX
-                      );}*/
+                      );}
                       
                      /* if(msf_candidateRemoveCellList(celllist_delete,&(neighbors_vars.neighbors[i].addr_64b),neighbors_vars.neighbors[i].cellRadioSetting,1, CELLTYPE_TX) == TRUE){
                          
@@ -746,7 +746,7 @@ void  neighbors_removeOld(void) {
                       );}
                       */
                       
-                      //then remove neighbor after deleting RX cell
+                      
                         removeNeighbor(i);
                        
                     }
