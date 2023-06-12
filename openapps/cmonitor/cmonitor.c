@@ -381,7 +381,7 @@ void cmonitor_fillpayload(OpenQueueEntry_t* msg,
          for (neighbor_counter = 0; neighbor_counter < numNeighbors; neighbor_counter++)
               {
                 
-                if(neighbor_counter < 13){ //Considering 12 is MAXNUM of Neighbors we autorise on the packets to not overflow
+                if(neighbor_counter < 12){ //Considering 12 is MAXNUM of Neighbors we autorise on the packets to not overflow
                 
          packetfunctions_reserveHeaderSize(msg,4*sizeof(uint8_t));   
          foundNeighbor = neighbors_getNeighborKey(&Neighbor,ADDR_64B,&neighbor_radio,neighbor_counter);
